@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include "vector.h"
 
 #include <cstdlib>
 
@@ -29,6 +29,8 @@ public:
     const T& e(size_t r, size_t c) const {
         return row(r).e(c);
     }
+
+    const float* data() const { return &e(0, 0); }
 
 private:
     struct ArrayWrapper {
@@ -59,11 +61,31 @@ Matrix<T, N> operator*(const Matrix<T, N>& a, const Matrix<T, N>& b) {
     return res;
 }
 
-Mat4f Mat4fRotationY(float angle) {
+inline auto toXMVector(const Vec4f& v) {
+    auto res = DirectX::XMVECTOR{};
+    memcpy(&res, &v, sizeof(res));
+    return res;
+}
+
+inline auto toMat4f(const DirectX::XMMATRIX& m) {
+    auto res = Mat4f{};
+    memcpy(&res, &m, sizeof(res));
+    return res;
+}
+
+inline auto Mat4fTranslation(const Vec3f& t) {
+    return Mat4f{Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
+                 Vec4f{0.0f, 0.0f, 1.0f, 0.0f}, Vec4f{t.x(), t.y(), t.z(), 1.0f}};
+}
+
+inline auto Mat4fRotationY(float angle) {
     auto xmm = DirectX::XMMatrixRotationY(angle);
-    Mat4f m;
-    memcpy(&m, &xmm, sizeof(m));
-    return m;
+    return toMat4f(xmm);
+}
+
+inline auto Mat4fLookAtRH(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
+    auto xmm = DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up));
+    return toMat4f(xmm);
 }
 
 }  // namespace mathlib

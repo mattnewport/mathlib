@@ -31,9 +31,14 @@ class Vector {
 public:
     static const size_t dimension = N;
 
-    template <typename... Us>
-    Vector(Us&&... us)
-        : aw({std::forward<Us>(us)...}) {}
+    Vector() = default;
+    Vector(const Vector&) = default;
+
+    template <typename... Ts>
+    Vector(T t, Ts&&... ts)
+        : aw({t, std::forward<Ts>(ts)...}) {
+        static_assert(sizeof...(Ts) == N - 1, "Constructor must be passed N initializers.");
+    }
 
     T& e(size_t i) { return aw.e_[i]; }
     constexpr const T& e(size_t i) const { return aw.e_[i]; }
@@ -77,6 +82,8 @@ public:
     auto end() const { return std::cend(aw.e_); }
     auto cbegin() const { return std::cbegin(aw.e_); }
     auto cend() const { return std::cend(aw.e_); }
+
+    Vector& operator+=(const Vector& x);
 
 private:
     struct ArrayWrapper {
@@ -163,6 +170,13 @@ inline Vector<T, N> operator/(const Vector<T, N>& a, T s) {
 template <typename T, size_t N>
 inline T dot(const Vector<T, N>& a, const Vector<T, N>& b) {
     return reduce(std::plus<>{}, memberwise(std::multiplies<>{}, a, b));
+}
+
+template<typename T, size_t N>
+inline Vector<T, N>& Vector<T, N>::operator+=(const Vector<T, N>& x) {
+    auto v = *this + x;
+    *this = v;
+    return *this;
 }
 
 }  // namespace mathlib
