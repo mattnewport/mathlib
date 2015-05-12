@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <functional>
 #include <iterator>
 #include <type_traits>
@@ -91,6 +92,7 @@ private:
     } aw;  // ArrayWrapper lets us initialize in constructor initializer
 };
 
+using Vec2f = Vector<float, 2>;
 using Vec3f = Vector<float, 3>;
 using Vec4f = Vector<float, 4>;
 
@@ -173,10 +175,25 @@ inline T dot(const Vector<T, N>& a, const Vector<T, N>& b) {
 }
 
 template<typename T, size_t N>
+inline T magnitude(const Vector<T, N>& a) {
+    return sqrt(dot(a, a));
+}
+
+template<typename T, size_t N>
+inline auto normalize(const Vector<T, N>& a) {
+    return a * (1.0f / magnitude(a));
+}
+
+template<typename T, size_t N>
 inline Vector<T, N>& Vector<T, N>::operator+=(const Vector<T, N>& x) {
     auto v = *this + x;
     *this = v;
     return *this;
+}
+
+template<typename T>
+inline Vector<T, 3> cross(const Vector<T, 3>& a, const Vector<T, 3>& b) {
+    return {a.y()*b.z() - a.z()*b.y(), a.z()*b.x() - a.x()*b.z(), a.x()*b.y() - a.y()*b.x()};
 }
 
 }  // namespace mathlib

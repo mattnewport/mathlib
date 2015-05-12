@@ -79,8 +79,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\mathconstants.h" />
+    <ClInclude Include="include\mathfuncs.h" />
     <ClInclude Include="include\mathio.h" />
     <ClInclude Include="include\matrix.h" />
+    <ClInclude Include="include\quaternion.h" />
     <ClInclude Include="include\vector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

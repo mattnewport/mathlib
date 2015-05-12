@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mathfuncs.h"
+#include "quaternion.h"
 #include "vector.h"
 
 #include <cstdlib>
@@ -13,9 +15,14 @@ class Matrix {
 public:
     static const size_t dimension = N;
 
+    Matrix() = default;
+    Matrix(const Matrix&) = default;
+
     template <typename... Us>
-    Matrix(Us&&... us)
-        : aw({ std::forward<Us>(us)... }) {}
+    Matrix(const Vector<T, N>& v, Us&&... us)
+        : aw({ v, std::forward<Us>(us)... }) {
+        static_assert(sizeof...(Us) == N - 1, "Constructor must be passed N row initializers.");
+    }
 
     Vector<T, N>& row(size_t n) { return aw.rows_[n]; }
     const Vector<T, N>& row(size_t n) const { return aw.rows_[n]; }
@@ -41,12 +48,12 @@ private:
 using Mat4f = Matrix<float, 4>;
 
 template<typename T, size_t N, size_t... Is>
-auto vecMatMultHelper(const Vector<T, N>& v, const Matrix<T, N>& m, std::index_sequence<Is...>) {
+inline auto vecMatMultHelper(const Vector<T, N>& v, const Matrix<T, N>& m, std::index_sequence<Is...>) {
     return Vector<T, N>{dot(v, m.column(Is))...};
 }
 
 template<typename T, size_t N>
-Vector<T, N> operator*(const Vector<T, N>& v, const Matrix<T, N>& m) {
+inline Vector<T, N> operator*(const Vector<T, N>& v, const Matrix<T, N>& m) {
     return vecMatMultHelper(v, m, std::make_index_sequence<N>{});
 }
 
@@ -86,6 +93,26 @@ inline auto Mat4fRotationY(float angle) {
 inline auto Mat4fLookAtRH(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
     auto xmm = DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up));
     return toMat4f(xmm);
+}
+
+template <typename T>
+inline Matrix<T, 4> Mat4FromQuat(const Quaternion<T>& q) {
+    using Vec = Vector<T, 4>;
+    constexpr auto t0 = T{0};
+    constexpr auto t1 = T{1};
+    constexpr auto t2 = T{2};
+    const auto _2x2 = t2 * square(q.x());
+    const auto _2y2 = t2 * square(q.y());
+    const auto _2z2 = t2 * square(q.z());
+    const auto _2xy = t2 * q.x() * q.y();
+    const auto _2zw = t2 * q.z() * q.w();
+    const auto _2xz = t2 * q.x() * q.z();
+    const auto _2yw = t2 * q.y() * q.w();
+    const auto _2yz = t2 * q.y() * q.z();
+    const auto _2xw = t2 * q.x() * q.w();
+    return {Vec{t1 - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, t0},
+            Vec{_2xy - _2zw, t1 - _2x2 - _2z2, _2yz + _2xw, t0},
+            Vec{_2xz + _2yw, _2yz - _2xw, t1 - _2x2 - _2y2, t0}, Vec{t0, t0, t0, t1}};
 }
 
 }  // namespace mathlib
