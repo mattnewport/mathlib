@@ -80,6 +80,11 @@ inline auto toMat4f(const DirectX::XMMATRIX& m) {
     return res;
 }
 
+inline auto Mat4fScale(float s) {
+    return Mat4f{ Vec4f{ s, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, s, 0.0f, 0.0f },
+        Vec4f{ 0.0f, 0.0f, s, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
 inline auto Mat4fTranslation(const Vec3f& t) {
     return Mat4f{Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
                  Vec4f{0.0f, 0.0f, 1.0f, 0.0f}, Vec4f{t.x(), t.y(), t.z(), 1.0f}};
