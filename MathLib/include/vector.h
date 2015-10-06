@@ -36,46 +36,45 @@ public:
     Vector(const Vector&) = default;
 
     template <typename... Ts>
-    Vector(T t, Ts&&... ts)
-        : aw({t, std::forward<Ts>(ts)...}) {
-        static_assert(sizeof...(Ts) == N - 1, "Constructor must be passed N initializers.");
-    }
+    Vector(std::enable_if_t<(sizeof...(Ts) <= N - 1), T> t, Ts... ts) : aw{{t, ts...}} {}
 
     T& e(size_t i) { return aw.e_[i]; }
-    constexpr const T& e(size_t i) const { return aw.e_[i]; }
+    constexpr T e(size_t i) const { return aw.e_[i]; }
 
     T& x() {
-        static_assert(N > 0, "accessing x element of empty vector");
         return aw.e_[0];
     }
-    constexpr const T& x() const {
-        static_assert(N > 0, "accessing x element of empty vector");
+    constexpr T x() const {
         return aw.e_[0];
     }
-    T& y() {
-        static_assert(N > 1, "accessing y element of vector of dimension less than 2");
+    template<size_t M = N>
+    std::enable_if_t<(M > 1), T&> y() {
         return aw.e_[1];
     }
-    constexpr const T& y() const {
-        static_assert(N > 1, "accessing y element of vector of dimension less than 2");
+    template<size_t M = N>
+    constexpr std::enable_if_t<(M > 1), T> y() const {
         return aw.e_[1];
     }
-    T& z() {
-        static_assert(N > 2, "accessing z element of vector of dimension less than 3");
+    template<size_t M = N>
+    std::enable_if_t<(M > 2), T&> z() {
         return aw.e_[2];
     }
-    constexpr const T& z() const {
-        static_assert(N > 2, "accessing z element of vector of dimension less than 3");
+    template<size_t M = N>
+    constexpr std::enable_if_t<(M > 2), T> z() const {
         return aw.e_[2];
     }
-    T& w() {
-        static_assert(N > 3, "accessing w element of vector of dimension less than 4");
+    template<size_t M = N>
+    std::enable_if_t<(M > 3), T&> w() {
         return aw.e_[3];
     }
-    constexpr const T& w() const {
-        static_assert(N > 3, "accessing w element of vector of dimension less than 4");
+    template<size_t M = N>
+    constexpr std::enable_if_t<(M > 3), T> w() const {
         return aw.e_[3];
     }
+
+    // MNTODO: replace this memberwise / reduce machinery with C++17 fold expressions once available
+    template <size_t I, typename F, typename... Args>
+    friend inline auto apply(F f, Args&&... args);
 
     auto begin() { return std::begin(aw.e_); }
     auto end() { return std::end(aw.e_); }
@@ -96,16 +95,17 @@ using Vec2f = Vector<float, 2>;
 using Vec3f = Vector<float, 3>;
 using Vec4f = Vector<float, 4>;
 
-template <size_t I, typename F, typename... Args>
-auto apply(F f, Args&&... args) {
-    return f(args.e(I)...);
-}
-
+// MNTODO: replace this memberwise / reduce machinery with C++17 fold expressions once available
 template <typename F, size_t... Is, typename... Args>
-auto apply(F f, std::index_sequence<Is...>, Args&&... args) {
+inline auto apply(F f, std::index_sequence<Is...>, Args&&... args) {
     using vec = std::common_type_t<Args...>;
     using resvec = Vector<decltype(apply<0>(f, args...)), vec::dimension>;
-    return resvec{apply<Is>(f, args...)...};
+    return resvec{ apply<Is>(f, args...)... };
+}
+
+template <size_t I, typename F, typename... Args>
+inline auto apply(F f, Args&&... args) {
+    return f(args.aw.e_[I]...);
 }
 
 template <typename F, typename... Args>
@@ -115,12 +115,12 @@ inline auto memberwise(F f, const Args&... args) {
 }
 
 template <typename F, typename Arg>
-auto reduce_impl(F, Arg arg) {
+inline auto reduce_impl(F, Arg arg) {
     return arg;
 }
 
 template <typename F, typename Arg, typename... Args>
-auto reduce_impl(F f, Arg arg, Args... args) {
+inline auto reduce_impl(F f, Arg arg, Args... args) {
     return f(arg, reduce_impl(f, args...));
 }
 
