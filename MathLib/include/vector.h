@@ -14,7 +14,7 @@
 // This code is very generic and uses multiple layers of function helpers, it compiles down to
 // pretty efficient code in release builds but in debug builds without any inlining it will be
 // pretty inefficient. Using /Ob1
-// http: //msdn.microsoft.com/en-us/library/47238hez.aspx for debug builds in Visual Studio will help
+// http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug builds in Visual Studio will help
 // debug performance a lot.
 //
 // You probably want to work with vec4fs as local variables and do all / most of your calculations
@@ -72,10 +72,6 @@ public:
         return aw.e_[3];
     }
 
-    // MNTODO: replace this memberwise / reduce machinery with C++17 fold expressions once available
-    template <size_t I, typename F, typename... Args>
-    friend inline auto apply(F f, Args&&... args);
-
     auto begin() { return std::begin(aw.e_); }
     auto end() { return std::end(aw.e_); }
     auto begin() const { return std::cbegin(aw.e_); }
@@ -83,12 +79,66 @@ public:
     auto cbegin() const { return std::cbegin(aw.e_); }
     auto cend() const { return std::cend(aw.e_); }
 
-    Vector& operator+=(const Vector& x);
+    template<typename U>
+    Vector& operator+=(const Vector<U, N>& x) {
+        return plusEquals(x, std::make_index_sequence<N>{});
+    }
+
+    template<typename U>
+    Vector& operator-=(const Vector<U, N>& x) {
+        return minusEquals(x, std::make_index_sequence<N>{});
+    }
+
+    template<typename U>
+    Vector& operator*=(U x) {
+        return multiplyEquals(x, std::make_index_sequence<N>{});
+    }
+
+    template<typename U, size_t... Is>
+    static auto memberwiseMultiply(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
+        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] * y.aw.e_[Is]...};
+    }
+
+    template<typename U, size_t... Is>
+    static auto plus(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
+        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] + y.aw.e_[Is]...};
+    }
+
+    template<typename U, size_t... Is>
+    static auto minus(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
+        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] - y.aw.e_[Is]...};
+    }
+
+    template<typename U, size_t... Is>
+    static auto multiply(const Vector& x, U y, std::index_sequence<Is...>) {
+        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] * y...};
+    }
 
 private:
+    template<typename U, size_t M> friend class Vector;
+
     struct ArrayWrapper {
         T e_[N];
     } aw;  // ArrayWrapper lets us initialize in constructor initializer
+
+    template<typename U, size_t... Is>
+    Vector& plusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
+        aw = { aw.e_[Is] + x.aw.e_[Is]... };
+        return *this;
+    }
+
+    template<typename U, size_t... Is>
+    Vector& minusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
+        aw = { aw.e_[Is] - x.aw.e_[Is]... };
+        return *this;
+    }
+
+    template<typename U, size_t... Is>
+    Vector& multiplyEquals(U x, std::index_sequence<Is...>) {
+        aw = { aw.e_[Is] * x... };
+        return *this;
+    }
+
 };
 
 using Vec2f = Vector<float, 2>;
@@ -96,32 +146,42 @@ using Vec3f = Vector<float, 3>;
 using Vec4f = Vector<float, 4>;
 
 // MNTODO: replace this memberwise / reduce machinery with C++17 fold expressions once available
-template <typename F, size_t... Is, typename... Args>
-inline auto apply(F f, std::index_sequence<Is...>, Args&&... args) {
-    using vec = std::common_type_t<Args...>;
-    using resvec = Vector<decltype(apply<0>(f, args...)), vec::dimension>;
-    return resvec{ apply<Is>(f, args...)... };
+template <typename F, size_t... Is, typename T, size_t N>
+inline auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x) {
+    using resvec = Vector<decltype(f(x.e(0))), N>;
+    return resvec{f(x.e(Is))...};
 }
 
-template <size_t I, typename F, typename... Args>
-inline auto apply(F f, Args&&... args) {
-    return f(args.aw.e_[I]...);
+template <typename F, size_t... Is, typename T, typename U, size_t N>
+inline auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x, const Vector<U, N>& y) {
+    using vec = Vector<std::common_type_t<T, U>, N>;
+    using resvec = Vector<decltype(f(x.e(0), y.e(0))), N>;
+    return resvec{f(x.e(Is), y.e(Is))...};
 }
 
-template <typename F, typename... Args>
-inline auto memberwise(F f, const Args&... args) {
-    using vec = std::common_type_t<Args...>;
-    return apply(f, std::make_index_sequence<vec::dimension>{}, args...);
+template <typename F, typename T, size_t N>
+inline auto memberwise(F f, const Vector<T, N>& x) {
+    return apply(f, std::make_index_sequence<N>{}, x);
 }
 
-template <typename F, typename Arg>
-inline auto reduce_impl(F, Arg arg) {
-    return arg;
+template <typename F, typename T, typename U, size_t N>
+inline auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y) {
+    return apply(f, std::make_index_sequence<N>{}, x, y);
 }
 
-template <typename F, typename Arg, typename... Args>
-inline auto reduce_impl(F f, Arg arg, Args... args) {
-    return f(arg, reduce_impl(f, args...));
+template <typename F, typename T>
+inline auto reduce_impl(F, T t) {
+    return t;
+}
+
+template <typename F, typename T>
+inline auto reduce_impl(F f, T x, T y) {
+    return f(x, y);
+}
+
+template <typename F, typename T, typename... Ts>
+inline auto reduce_impl(F f, T x, T y, Ts... ts) {
+    return f(x, reduce_impl(f, y, ts...));
 }
 
 template <typename F, typename T, size_t N, size_t... Is>
@@ -134,6 +194,13 @@ inline T reduce(F f, const Vector<T, N>& v) {
     return reduce(f, v, std::make_index_sequence<N>{});
 }
 
+// Manual specializations of reduce for commonly used + in dot product, remove when we have fold
+template<typename T>
+inline auto reduce(std::plus<>, const Vector<T, 3>& v) {
+    auto vs = v.begin();
+    return vs[0] + vs[1] + vs[2];
+}
+
 template <typename T, size_t N>
 inline bool operator==(const Vector<T, N>& a, const Vector<T, N>& b) {
     return reduce(std::logical_and<>{}, memberwise(std::equal_to<>{}, a, b));
@@ -144,51 +211,45 @@ inline bool operator<(const Vector<T, N>& a, const Vector<T, N>& b) {
     return std::lexicographical_compare(begin(a), end(a), begin(b), end(b));
 }
 
-template <typename T, size_t N>
-inline Vector<T, N> operator+(const Vector<T, N>& a, const Vector<T, N>& b) {
-    return memberwise(std::plus<>{}, a, b);
+template <typename T, typename U, size_t N>
+inline auto operator+(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return Vector<T, N>::plus(a, b, std::make_index_sequence<N>{});
 }
 
-template <typename T, size_t N>
-inline Vector<T, N> operator-(const Vector<T, N>& a, const Vector<T, N>& b) {
-    return memberwise(std::minus<>{}, a, b);
+template <typename T, typename U, size_t N>
+inline auto operator-(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return Vector<T, N>::minus(a, b, std::make_index_sequence<N>{});
 }
 
-template <typename T, size_t N>
-inline Vector<T, N> operator*(const Vector<T, N>& a, T s) {
-    return memberwise([s](T e) { return e * s; }, a);
+template <typename T, typename U, size_t N>
+inline auto operator*(const Vector<T, N>& a, U s) {
+    return Vector<T, N>::multiply(a, s, std::make_index_sequence<N>{});
 }
 
-template <typename T, size_t N>
-inline Vector<T, N> operator*(T s, const Vector<T, N>& a) {
+template <typename T, typename U, size_t N>
+inline auto operator*(T s, const Vector<U, N>& a) {
     return a * s;
 }
 
-template <typename T, size_t N>
-inline Vector<T, N> operator/(const Vector<T, N>& a, T s) {
+template <typename T, typename U, size_t N>
+inline auto operator/(const Vector<T, N>& a, U s) {
     return a * (T{1} / s);
 }
 
-template <typename T, size_t N>
-inline T dot(const Vector<T, N>& a, const Vector<T, N>& b) {
-    return reduce(std::plus<>{}, memberwise(std::multiplies<>{}, a, b));
+template <typename T, typename U, size_t N>
+inline auto dot(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return reduce(std::plus<>{},
+                  Vector<T, N>::memberwiseMultiply(a, b, std::make_index_sequence<N>{}));
 }
 
-template<typename T, size_t N>
+template <typename T, size_t N>
 inline T magnitude(const Vector<T, N>& a) {
     return sqrt(dot(a, a));
 }
 
-template<typename T, size_t N>
+template <typename T, size_t N>
 inline auto normalize(const Vector<T, N>& a) {
-    return a * (1.0f / magnitude(a));
-}
-
-template<typename T, size_t N>
-inline Vector<T, N>& Vector<T, N>::operator+=(const Vector<T, N>& x) {
-    auto v = *this + x;
-    *this = v;
-    return *this;
+    return a * (T{1} / magnitude(a));
 }
 
 template<typename T>
