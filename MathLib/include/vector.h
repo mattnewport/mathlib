@@ -27,6 +27,9 @@
 
 namespace mathlib {
 
+template<typename... Ts>
+inline void eval(Ts...) {}
+
 template <typename T, size_t N>
 class Vector {
 public:
@@ -36,48 +39,48 @@ public:
     Vector(const Vector&) = default;
 
     template <typename... Ts>
-    Vector(std::enable_if_t<(sizeof...(Ts) <= N - 1), T> t, Ts... ts) : aw{{t, ts...}} {}
+    Vector(std::enable_if_t<(sizeof...(Ts) <= N - 1), T> t, Ts... ts) : e_{t, ts...} {}
 
-    T& e(size_t i) { return aw.e_[i]; }
-    constexpr T e(size_t i) const { return aw.e_[i]; }
+    T& e(size_t i) { return e_[i]; }
+    constexpr T e(size_t i) const { return e_[i]; }
 
     T& x() {
-        return aw.e_[0];
+        return e_[0];
     }
     constexpr T x() const {
-        return aw.e_[0];
+        return e_[0];
     }
     template<size_t M = N>
     std::enable_if_t<(M > 1), T&> y() {
-        return aw.e_[1];
+        return e_[1];
     }
     template<size_t M = N>
     constexpr std::enable_if_t<(M > 1), T> y() const {
-        return aw.e_[1];
+        return e_[1];
     }
     template<size_t M = N>
     std::enable_if_t<(M > 2), T&> z() {
-        return aw.e_[2];
+        return e_[2];
     }
     template<size_t M = N>
     constexpr std::enable_if_t<(M > 2), T> z() const {
-        return aw.e_[2];
+        return e_[2];
     }
     template<size_t M = N>
     std::enable_if_t<(M > 3), T&> w() {
-        return aw.e_[3];
+        return e_[3];
     }
     template<size_t M = N>
     constexpr std::enable_if_t<(M > 3), T> w() const {
-        return aw.e_[3];
+        return e_[3];
     }
 
-    auto begin() { return std::begin(aw.e_); }
-    auto end() { return std::end(aw.e_); }
-    auto begin() const { return std::cbegin(aw.e_); }
-    auto end() const { return std::cend(aw.e_); }
-    auto cbegin() const { return std::cbegin(aw.e_); }
-    auto cend() const { return std::cend(aw.e_); }
+    auto begin() { return std::begin(e_); }
+    auto end() { return std::end(e_); }
+    auto begin() const { return std::cbegin(e_); }
+    auto end() const { return std::cend(e_); }
+    auto cbegin() const { return std::cbegin(e_); }
+    auto cend() const { return std::cend(e_); }
 
     template<typename U>
     Vector& operator+=(const Vector<U, N>& x) {
@@ -96,49 +99,46 @@ public:
 
     template<typename U, size_t... Is>
     static auto memberwiseMultiply(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
-        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] * y.aw.e_[Is]...};
+        return Vector<std::common_type_t<T, U>, N>{x.e_[Is] * y.e_[Is]...};
     }
 
     template<typename U, size_t... Is>
     static auto plus(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
-        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] + y.aw.e_[Is]...};
+        return Vector<std::common_type_t<T, U>, N>{x.e_[Is] + y.e_[Is]...};
     }
 
     template<typename U, size_t... Is>
     static auto minus(const Vector& x, const Vector<U, N>& y, std::index_sequence<Is...>) {
-        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] - y.aw.e_[Is]...};
+        return Vector<std::common_type_t<T, U>, N>{x.e_[Is] - y.e_[Is]...};
     }
 
     template<typename U, size_t... Is>
     static auto multiply(const Vector& x, U y, std::index_sequence<Is...>) {
-        return Vector<std::common_type_t<T, U>, N>{x.aw.e_[Is] * y...};
+        return Vector<std::common_type_t<T, U>, N>{x.e_[Is] * y...};
     }
 
 private:
+    T e_[N];
+
     template<typename U, size_t M> friend class Vector;
 
-    struct ArrayWrapper {
-        T e_[N];
-    } aw;  // ArrayWrapper lets us initialize in constructor initializer
-
-    template<typename U, size_t... Is>
+    template <typename U, size_t... Is>
     Vector& plusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
-        aw = { aw.e_[Is] + x.aw.e_[Is]... };
+        eval(e_[Is] += x.e_[Is]...);
         return *this;
     }
 
-    template<typename U, size_t... Is>
+    template <typename U, size_t... Is>
     Vector& minusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
-        aw = { aw.e_[Is] - x.aw.e_[Is]... };
+        eval(e_[Is] -= x.e_[Is]...);
         return *this;
     }
 
-    template<typename U, size_t... Is>
+    template <typename U, size_t... Is>
     Vector& multiplyEquals(U x, std::index_sequence<Is...>) {
-        aw = { aw.e_[Is] * x... };
+        eval(e_[Is] *= x...);
         return *this;
     }
-
 };
 
 using Vec2f = Vector<float, 2>;
