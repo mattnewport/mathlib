@@ -215,15 +215,9 @@ constexpr auto operator/(const Vector<T, N>& a, U s) {
     return a * (T{1} / s);
 }
 
-template <typename T, typename U, size_t N, size_t... Is>
-constexpr auto memberwiseMultiply(const Vector<T, N>& a, const Vector<U, N>& b,
-                                  std::index_sequence<Is...>) {
-    return Vector<decltype(a.e(0) * b.e(0)), N>{a.e(Is) * b.e(Is)...};
-}
-
 template <typename T, typename U, size_t N>
 constexpr auto dot(const Vector<T, N>& a, const Vector<U, N>& b) {
-    return fold(std::plus<>{}, memberwiseMultiply(a, b, std::make_index_sequence<N>{}));
+    return fold(std::plus<>{}, memberwise(std::multiplies<>{}, a, b));
 }
 
 template <typename T, size_t N>
