@@ -169,37 +169,40 @@ using Vec2i = Vector<int, 2>;
 using Vec3i = Vector<int, 3>;
 using Vec4i = Vector<int, 4>;
 
+// Apply a function F(T) to each element of Vector x and return a new Vector of the results
 template <typename F, size_t... Is, typename T, size_t N>
-constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x) {
+constexpr auto memberwise(F f, std::index_sequence<Is...>, const Vector<T, N>& x) {
     using resvec = Vector<decltype(f(x.e(0))), N>;
     return resvec{f(x.e(Is))...};
 }
 
+template <typename F, typename T, size_t N>
+constexpr auto memberwise(F f, const Vector<T, N>& x) {
+    return memberwise(f, std::make_index_sequence<N>{}, x);
+}
+
+// Apply a function F(T, U) pairwise to elements of x and y and return a new Vector of the results
 template <typename F, size_t... Is, typename T, typename U, size_t N>
-constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x, const Vector<U, N>& y) {
+constexpr auto memberwise(F f, std::index_sequence<Is...>, const Vector<T, N>& x, const Vector<U, N>& y) {
     using resvec = Vector<decltype(f(x.e(0), y.e(0))), N>;
     return resvec{f(x.e(Is), y.e(Is))...};
 }
 
+template <typename F, typename T, typename U, size_t N>
+constexpr auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y) {
+    return memberwise(f, std::make_index_sequence<N>{}, x, y);
+}
+
+// Apply a function F(T, U) to elements of x with scalar y and return a new Vector of the results
 template <typename F, size_t... Is, typename T, typename U, size_t N>
-constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x, U y) {
+constexpr auto memberwise(F f, std::index_sequence<Is...>, const Vector<T, N>& x, U y) {
     using resvec = Vector<decltype(f(x.e(0), y)), N>;
     return resvec{ f(x.e(Is), y)... };
 }
 
-template <typename F, typename T, size_t N>
-constexpr auto memberwise(F f, const Vector<T, N>& x) {
-    return apply(f, std::make_index_sequence<N>{}, x);
-}
-
-template <typename F, typename T, typename U, size_t N>
-constexpr auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y) {
-    return apply(f, std::make_index_sequence<N>{}, x, y);
-}
-
 template <typename F, typename T, typename U, size_t N>
 constexpr auto memberwise(F f, const Vector<T, N>& x, U y) {
-    return apply(f, std::make_index_sequence<N>{}, x, y);
+    return memberwise(f, std::make_index_sequence<N>{}, x, y);
 }
 
 // MNTODO: replace this fold machinery with C++17 fold expressions once available
@@ -228,7 +231,9 @@ constexpr auto fold(F f, const Vector<T, N>& v) {
     return fold(f, v, std::make_index_sequence<N>{});
 }
 
-template<typename T, size_t N, size_t... Is>
+// Make a tuple of the elements of Vector a, a helper for implementing operators but also
+// potentially useful on its own.
+template <typename T, size_t N, size_t... Is>
 constexpr auto make_tuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
     return std::make_tuple(a.e(Is)...);
 }
