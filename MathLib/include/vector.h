@@ -29,7 +29,7 @@
 namespace mathlib {
 
 template<typename... Ts>
-inline void eval(Ts...) {}
+inline void eval(Ts&&...) {}
 
 template <typename T, size_t N>
 class Vector {
@@ -43,6 +43,14 @@ public:
     // numeric types).
     template <typename... Us>
     constexpr Vector(std::enable_if_t<(sizeof...(Us) <= N - 1), T> t, Us... us) : e_{t, us...} {}
+
+    // Templated conversion constructor from a Vector<U, N>
+    template <typename U, size_t... Is>
+    constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) : e_{x.e_[Is]...} {}
+    // MNTODO: can't make this constexpr due to a bug in VS2015:
+    // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
+    template <typename U>
+    Vector(const Vector<U, N>& x) : Vector{x, std::make_index_sequence<N>{}} {}
 
     T& e(size_t i) { return e_[i]; }
     constexpr T e(size_t i) const { return e_[i]; }
@@ -126,6 +134,10 @@ using Vec2f = Vector<float, 2>;
 using Vec3f = Vector<float, 3>;
 using Vec4f = Vector<float, 4>;
 
+using Vec2i = Vector<int, 2>;
+using Vec3i = Vector<int, 3>;
+using Vec4i = Vector<int, 4>;
+
 template <typename F, size_t... Is, typename T, size_t N>
 constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x) {
     using resvec = Vector<decltype(f(x.e(0))), N>;
@@ -138,6 +150,12 @@ constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x, con
     return resvec{f(x.e(Is), y.e(Is))...};
 }
 
+template <typename F, size_t... Is, typename T, typename U, size_t N>
+constexpr auto apply(F f, std::index_sequence<Is...>, const Vector<T, N>& x, U y) {
+    using resvec = Vector<decltype(f(x.e(0), y)), N>;
+    return resvec{ f(x.e(Is), y)... };
+}
+
 template <typename F, typename T, size_t N>
 constexpr auto memberwise(F f, const Vector<T, N>& x) {
     return apply(f, std::make_index_sequence<N>{}, x);
@@ -145,6 +163,11 @@ constexpr auto memberwise(F f, const Vector<T, N>& x) {
 
 template <typename F, typename T, typename U, size_t N>
 constexpr auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y) {
+    return apply(f, std::make_index_sequence<N>{}, x, y);
+}
+
+template <typename F, typename T, typename U, size_t N>
+constexpr auto memberwise(F f, const Vector<T, N>& x, U y) {
     return apply(f, std::make_index_sequence<N>{}, x, y);
 }
 
@@ -179,13 +202,14 @@ constexpr auto make_tuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
     return std::make_tuple(a.e(Is)...);
 }
 
-template <typename T, size_t N>
-constexpr bool operator==(const Vector<T, N>& a, const Vector<T, N>& b) {
-    return fold(std::logical_and<>{}, memberwise(std::equal_to<>{}, a, b));
+template <typename T, typename U, size_t N>
+constexpr bool operator==(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return make_tuple(a, std::make_index_sequence<N>{}) ==
+           make_tuple(b, std::make_index_sequence<N>{});
 }
 
-template <typename T, size_t N>
-constexpr bool operator<(const Vector<T, N>& a, const Vector<T, N>& b) {
+template <typename T, typename U, size_t N>
+constexpr bool operator<(const Vector<T, N>& a, const Vector<U, N>& b) {
     return make_tuple(a, std::make_index_sequence<N>{}) <
            make_tuple(b, std::make_index_sequence<N>{});
 }
@@ -202,7 +226,7 @@ constexpr auto operator-(const Vector<T, N>& a, const Vector<U, N>& b) {
 
 template <typename T, typename U, size_t N>
 constexpr auto operator*(const Vector<T, N>& a, U s) {
-    return memberwise([s](auto x) {return x * s; }, a);
+    return memberwise(std::multiplies<>{}, a, s);
 }
 
 template <typename T, typename U, size_t N>
@@ -210,9 +234,22 @@ constexpr auto operator*(T s, const Vector<U, N>& a) {
     return a * s;
 }
 
+struct integral_tag {};
+struct floating_point_tag {};
+template <typename T, typename U, size_t N>
+constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
+    return memberwise(std::divides<>{}, a, s);
+}
+template <typename T, typename U, size_t N>
+constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
+    return a * (T{1} / s);
+}
+
 template <typename T, typename U, size_t N>
 constexpr auto operator/(const Vector<T, N>& a, U s) {
-    return a * (T{1} / s);
+    using tag =
+        std::conditional_t<std::is_floating_point<U>::value, floating_point_tag, integral_tag>;
+    return divide(a, s, tag{});
 }
 
 template <typename T, typename U, size_t N>

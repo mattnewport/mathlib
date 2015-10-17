@@ -1,4 +1,7 @@
 #include "stdafx.h"
+
+#include <type_traits>
+
 #include "CppUnitTest.h"
 
 #include "mathio.h"
@@ -14,7 +17,8 @@ using namespace DirectX;
 using namespace mathlib;
 
 namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework { 
-template<> inline std::wstring ToString<Vec4f>(const Vec4f& t) { RETURN_WIDE_STRING(t); }
+template<typename T, size_t N>
+std::wstring ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
 }}}
 
 namespace UnitTests {
@@ -22,18 +26,74 @@ TEST_CLASS(VectorUnitTests){
 public :
 
     TEST_METHOD(TestAdd) {
-        Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
-        Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
-        auto v2 = v0 + v1;
+        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
+        constexpr Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
+        constexpr auto v2 = v0 + v1;
         Assert::AreEqual(Vec4f{ 3.0f, 6.0f, 9.0f, 12.0f }, v2);
+        constexpr Vector<double, 4> v3{ 2.0, 4.0, 6.0, 8.0 };
+        constexpr auto v4 = v0 + v3;
+        Assert::AreEqual(v4, Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
+    }
+
+    TEST_METHOD(TestSubtract) {
+        constexpr Vec4f v0{2.0f, 4.0f, 6.0f, 8.0f};
+        constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr auto v2 = v0 - v1;
+        Assert::AreEqual(v2, Vec4f{1.0f, 2.0f, 3.0f, 4.0f});
+        const Vector<double, 4> v3{v0};
+        Assert::IsTrue(v3 == v0);
+        constexpr Vector<double, 4> v4{ 2.0, 4.0, 6.0, 8.0 };
+        constexpr auto v5 = v4 - v1;
+        static_assert(std::is_same<decltype(v5), const Vector<double, 4>>::value, "");
+        static_assert(v5 == v2, "");
+        Assert::IsTrue(v5 == v2);
+        constexpr auto v6{v1};
+        constexpr auto v7 = v6 - v1;
+        static_assert(v7 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
     }
 
     TEST_METHOD(TestScalarMultiply) {
-        Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
-        Vec4f v1 = v0 * 2.0f;
-        Vec4f v2 = 2.0f * v0;
+        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
+        constexpr auto v1 = v0 * 2.0f;
+        constexpr auto v2 = 2.0f * v0;
+        constexpr auto v3 = v0 * 2.0;
+        static_assert(std::is_same<decltype(v3), const Vector<double, 4>>::value, "");
         Assert::AreEqual(v1, v2);
         Assert::AreEqual(v1, Vec4f{ 2.0f, 4.0f, 6.0f, 8.0f });
+        Assert::AreEqual(v3, Vector<double, 4>{2.0, 4.0, 6.0, 8.0});
+        Assert::IsTrue(v1 == v3);
+    }
+
+    TEST_METHOD(TestDot) {
+        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
+        constexpr Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
+        constexpr auto s0 = dot(v0, v1);
+        Assert::AreEqual(s0, 1.0f * 2.0f + 2.0f * 4.0f + 3.0f * 6.0f + 4.0f * 8.0f);
+        constexpr Vector<double, 4> v3{ 2.0, 4.0, 6.0, 8.0 };
+        constexpr auto s1 = dot(v0, v3);
+        Assert::AreEqual(s1, 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0);
+        static_assert(s1 == 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0, "");
+    }
+
+    TEST_METHOD(TestDivide) {
+        constexpr Vec3f v0{2.0f, 4.0f, 6.0f};
+        constexpr auto v1 = v0 / 2.0f;
+        static_assert(v1 == Vec3f{1.0f, 2.0f, 3.0f}, "");
+        Assert::AreEqual(v1, Vec3f{1.0f, 2.0f, 3.0f});
+
+        constexpr Vec3i v2{2, 4, 6};
+        constexpr auto v3 = v2 / 2;
+        static_assert(v3 == Vec3i{1, 2, 3}, "");
+        Assert::AreEqual(v3, Vec3i{1, 2, 3});
+    }
+
+    TEST_METHOD(TestMagnitude) {
+        constexpr Vec2f v0{ 3.0f, 4.0f };
+        const auto s0 = magnitude(v0);
+        Assert::AreEqual(s0, 5.0f);
+        constexpr Vec3f v1{ 1.0f, 1.0f, 1.0f };
+        const auto s1 = magnitude(v1);
+        Assert::AreEqual(s1, sqrt(3.0f));
     }
 };
 
