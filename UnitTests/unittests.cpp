@@ -197,6 +197,18 @@ TEST_CLASS(MatrixUnitTests){
         auto xmm = XMMatrixRotationY(angle);
         Assert::IsTrue(memcmp(&m, &xmm, sizeof(m)) == 0);
     }
+
+    TEST_METHOD(TestTranspose) {
+        constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr auto v1 = Vec4f{5.0f, 6.0f, 7.0f, 8.0f};
+        constexpr auto v2 = Vec4f{9.0f, 10.0f, 11.0f, 12.0f};
+        constexpr auto v3 = Vec4f{13.0f, 14.0f, 15.0f, 16.0f};
+        const auto m0 = Mat4f{v0, v1, v2, v3};
+        const auto m1 = transpose(m0);
+        const auto m2 = Mat4f{Vec4f{1.0f, 5.0f, 9.0f, 13.0f}, Vec4f{2.0f, 6.0f, 10.0f, 14.0f},
+                              Vec4f{3.0f, 7.0f, 11.0f, 15.0f}, Vec4f{4.0f, 8.0f, 12.0f, 16.0f}};
+        Assert::IsTrue(m1 == m2);
+    }
 };
 
 }
