@@ -31,6 +31,11 @@ namespace mathlib {
 template<typename... Ts>
 inline void eval(Ts&&...) {}
 
+struct integral_tag {};
+struct floating_point_tag {};
+template <typename T>
+using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_tag, integral_tag>;
+
 template <typename T, size_t N>
 class Vector {
 public:
@@ -38,11 +43,19 @@ public:
 
     constexpr Vector() = default;
 
-    // Standard constructor taking a sequence of 1 to N objects convertible to T. If you provide
-    // less than N arguments, the remaining elements will be default initialized (to 0 for normal
-    // numeric types).
-    template <typename... Us>
-    constexpr Vector(std::enable_if_t<(sizeof...(Us) <= N - 1), T> t, Us... us) : e_{t, us...} {}
+    // Standard constructor taking a sequence of exactly N objects convertible to T (no narrowing
+    // conversions).
+    template <typename U, typename V, typename... Us,
+              typename = std::enable_if_t<(sizeof...(Us) == N - 2)>>
+    constexpr Vector(U u, V v, Us... us) : e_{u, v, us...} {}
+    // For convenience we have an explicit constructor taking a single argument that sets all
+    // members of the vector to the value of that argument.
+    template <typename U, size_t... Is>
+    explicit constexpr Vector(U u, std::index_sequence<Is...>) : e_{(Is, u)...} {}
+    // MNTODO: can't make this constexpr due to a bug in VS2015:
+    // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
+    template <typename U>
+    explicit Vector(U u) : Vector{u, std::make_index_sequence<N>{}} {}
 
     // Templated conversion constructor from a Vector<U, N>
     template <typename U, size_t... Is>
@@ -106,6 +119,11 @@ public:
         return multiplyEquals(x, std::make_index_sequence<N>{});
     }
 
+    template<typename U>
+    Vector& operator/=(U x) {
+        return divideEquals(x, std::make_index_sequence<N>{}, tag<U>{});
+    }
+
 private:
     T e_[N];
 
@@ -126,6 +144,19 @@ private:
     template <typename U, size_t... Is>
     Vector& multiplyEquals(U x, std::index_sequence<Is...>) {
         eval(e_[Is] *= x...);
+        return *this;
+    }
+
+    template <typename U, size_t... Is>
+    Vector& divideEquals(U x, std::index_sequence<Is...>, integral_tag) {
+        eval(e_[Is] /= x...);
+        return *this;
+    }
+
+    template <typename U, size_t... Is>
+    Vector& divideEquals(U x, std::index_sequence<Is...>, floating_point_tag) {
+        const auto s = U{1} / x;
+        eval(e_[Is] *= s...);
         return *this;
     }
 };
@@ -209,6 +240,11 @@ constexpr bool operator==(const Vector<T, N>& a, const Vector<U, N>& b) {
 }
 
 template <typename T, typename U, size_t N>
+constexpr bool operator!=(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return !(a == b);
+}
+
+template <typename T, typename U, size_t N>
 constexpr bool operator<(const Vector<T, N>& a, const Vector<U, N>& b) {
     return make_tuple(a, std::make_index_sequence<N>{}) <
            make_tuple(b, std::make_index_sequence<N>{});
@@ -234,8 +270,6 @@ constexpr auto operator*(T s, const Vector<U, N>& a) {
     return a * s;
 }
 
-struct integral_tag {};
-struct floating_point_tag {};
 template <typename T, typename U, size_t N>
 constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
     return memberwise(std::divides<>{}, a, s);
@@ -247,9 +281,7 @@ constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
 
 template <typename T, typename U, size_t N>
 constexpr auto operator/(const Vector<T, N>& a, U s) {
-    using tag =
-        std::conditional_t<std::is_floating_point<U>::value, floating_point_tag, integral_tag>;
-    return divide(a, s, tag{});
+    return divide(a, s, tag<U>{});
 }
 
 template <typename T, typename U, size_t N>

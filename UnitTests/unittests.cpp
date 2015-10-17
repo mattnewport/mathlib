@@ -25,6 +25,30 @@ namespace UnitTests {
 TEST_CLASS(VectorUnitTests){
 public :
 
+    TEST_METHOD(TestBasics) {
+        const Vec4f v0{1.0f};
+        Assert::IsTrue(v0.x() == 1.0f && v0.y() == 1.0f && v0.z() == 1.0f && v0.w() == 1.0f);
+        constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
+        Assert::IsTrue(v1.x() == 1.0f && v1.y() == 2.0f && v1.z() == 3.0f && v1.w() == 4.0f);
+        Assert::IsTrue(v1.e(0) == 1.0f && v1.e(1) == 2.0f && v1.e(2) == 3.0f && v1.e(3) == 4.0f);
+        constexpr auto v2 = v1;
+        Assert::IsTrue(v2 == v1);
+        Assert::IsTrue(v0 != v1);
+        Assert::IsFalse(v2 != v1);
+        Assert::IsFalse(v0 == v1);
+        Assert::IsTrue(v0 < v1);
+        Assert::IsFalse(v1 < v0);
+        Assert::IsFalse(v0 < v0);
+        constexpr Vector<double, 4> v3{ 1.0, 2.0, 3.0, 4.0 };
+        Assert::IsTrue(v1 == v3);
+        const Vector<double, 4> v4{v1};
+        Assert::IsTrue(v4 == v1);
+        const Vector<double, 4> v5{1.0f};
+        Assert::IsTrue(v5 == v0);
+        const Vec2f v6{1.0f, 2.0f};
+        Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
+    }
+
     TEST_METHOD(TestAdd) {
         constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
         constexpr Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
@@ -83,7 +107,7 @@ public :
 
         constexpr Vec3i v2{2, 4, 6};
         constexpr auto v3 = v2 / 2;
-        static_assert(v3 == Vec3i{1, 2, 3}, "");
+        static_assert(std::is_same<decltype(v3), const Vec3i>::value && v3 == Vec3i{1, 2, 3}, "");
         Assert::AreEqual(v3, Vec3i{1, 2, 3});
     }
 
@@ -94,6 +118,34 @@ public :
         constexpr Vec3f v1{ 1.0f, 1.0f, 1.0f };
         const auto s1 = magnitude(v1);
         Assert::AreEqual(s1, sqrt(3.0f));
+    }
+
+    TEST_METHOD(TestNormalize) {
+        constexpr Vec3f v0{1.0f, 2.0f, 3.0f};
+        const auto s0 = magnitude(v0);
+        const auto v1 = normalize(v0);
+        const auto s1 = magnitude(v1);
+        auto closeEnough = [](auto a, auto b) { return abs(a - b) < 1e-6f; };
+        Assert::IsTrue(closeEnough(1.0f, s1));
+        const auto v2 = v1 * s0;
+        Assert::IsTrue(closeEnough(v0.x(), v2.x()) && closeEnough(v0.y(), v2.y()) &&
+                       closeEnough(v0.z(), v2.z()));
+    }
+
+    TEST_METHOD(TestOpAssignment) {
+        Vec3f v0{1.0f, 2.0f, 3.0f};
+        constexpr Vec3f v1{1.0f, 2.0f, 3.0f};
+        v0 += v1;
+        Assert::AreEqual(v0, Vec3f{2.0f, 4.0f, 6.0f});
+        v0 -= v1;
+        Assert::AreEqual(v0, Vec3f{1.0f, 2.0f, 3.0f});
+        v0 *= 2.0f;
+        Assert::AreEqual(v0, Vec3f{2.0f, 4.0f, 6.0f});
+        v0 /= 2.0f;
+        Assert::AreEqual(v0, Vec3f{ 1.0f, 2.0f, 3.0f });
+        Vec3i v2{2, 3, 4};
+        v2 /= 2;
+        Assert::IsTrue(v2.x() == 2 / 2 && v2.y() == 3 / 2 && v2.z() == 4 / 2);
     }
 };
 
