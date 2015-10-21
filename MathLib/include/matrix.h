@@ -38,6 +38,29 @@ public:
     const float* data() const { return row(0).data(); }
 
     const auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
+
+    template<typename U>
+    auto& operator+=(const Matrix<U, M, N>& x) {
+        rows() += x.rows();
+        return *this;
+    }
+    template<typename U>
+    auto& operator-=(const Matrix<U, M, N>& x) {
+        rows() -= x.rows();
+        return *this;
+    }
+    template<typename U>
+    auto& operator*=(U s) {
+        rows() *= s;
+        return *this;
+    }
+    template<typename U>
+    auto& operator/=(U s) {
+        rows() /= s;
+        return *this;
+    }
+private:
+    auto& rows() { return static_cast<Vector<Vector<T, N>, M>&>(*this); }
 };
 
 using Mat4f = Matrix<float, 4, 4>;
@@ -83,8 +106,18 @@ constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
 }
 
 template <typename T, typename U, size_t M, size_t N>
+constexpr auto operator-(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
+    return Matrix<decltype(x.e(0, 0) - y.e(0, 0)), M, N>{x.rows() - y.rows()};
+}
+
+template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator*(const Matrix<T, M, N>& x, U s) {
     return Matrix<decltype(x.e(0, 0) * s), M, N>{x.rows() * s};
+}
+
+template <typename T, typename U, size_t M, size_t N>
+constexpr auto operator*(U s, const Matrix<T, M, N>& x) {
+    return x * s;
 }
 
 template <typename T, size_t M, size_t N, size_t... Is>

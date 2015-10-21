@@ -76,6 +76,15 @@ public :
         constexpr Vector<double, 4> v3{ 2.0, 4.0, 6.0, 8.0 };
         constexpr auto v4 = v0 + v3;
         Assert::AreEqual(v4, Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
+
+        auto v5 = v0;
+        v5 += v1;
+        Assert::AreEqual(v5, v2);
+
+        const auto v6 = Vector<Vec2f, 2>{ Vec2f{ 1.0f, 2.0f }, Vec2f{ 3.0f, 4.0f } };
+        auto v7 = v6;
+        v7 += v6;
+        Assert::AreEqual(v7, v6 * 2.0f);
     }
 
     TEST_METHOD(TestSubtract) {
@@ -208,6 +217,17 @@ TEST_CLASS(MatrixUnitTests){
         const auto m3 = m1 + m2;
         Assert::AreEqual(m3, Mat4f{ Vec4f{ 4.0f, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, 4.0f, 0.0f, 0.0f },
             Vec4f{ 0.0f, 0.0f, 4.0f, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 2.0f } });
+
+        auto m4 = m1;
+        m4 += m2;
+        Assert::AreEqual(m4, m3);
+    }
+
+    TEST_METHOD(TestMatrixSubtract) {
+        const auto m0 = MatrixFromRows(Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
+            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f });
+        const auto m1 = 2.0f * m0;
+        Assert::AreEqual(m1 - m0, m0);
     }
 
     TEST_METHOD(TestMatrixScalarMultiply) {
@@ -216,6 +236,14 @@ TEST_CLASS(MatrixUnitTests){
         const auto m2 = m1 * 0.5f;
         Assert::AreEqual(m2, Mat4fFromRows({0.5f, 1.0f, 1.5f, 2.0f}, {2.5f, 3.0f, 3.5f, 4.0f},
                                            {4.5f, 5.0f, 5.5f, 6.0f}, {6.5f, 7.0f, 7.5f, 8.0f}));
+
+        auto m3 = m1;
+        m3 *= 0.5f;
+        Assert::AreEqual(m3, m2);
+
+        auto m4 = m1;
+        m4 /= 2.0f;
+        Assert::AreEqual(m4, m2);
     }
 
     TEST_METHOD(TestMatrixColumnAccess){
