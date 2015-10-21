@@ -14,6 +14,9 @@ namespace mathlib {
 template <typename T, size_t M, size_t N>
 class Matrix : private Vector<Vector<T, N>, M> {
 public:
+    // Since we inherit privately from Vector<Vector<T, N>, M>, this gives us constructors taking M
+    // Vector<T, N>s representing the rows of the matrix and taking a single Vector<T, N> used to
+    // initialize all M rows.
     using Vector::Vector;
 
     Vector<T, N>& row(size_t n) { return Vector::e(n); }

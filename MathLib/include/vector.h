@@ -53,6 +53,15 @@ public:
     template <typename U>
     Vector(const Vector<U, N>& x) : Vector{x, std::make_index_sequence<N>{}} {}
 
+    // Templated conversion constructor from a Vector<U, N-1> and a scalar V
+    template <typename U, typename V, size_t... Is>
+    constexpr Vector(const Vector<U, N - 1>& x, V s, std::index_sequence<Is...>)
+        : e_{x.e_[Is]..., s} {}
+    // MNTODO: can't make this constexpr due to a bug in VS2015:
+    // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
+    template <typename U, typename V>
+    Vector(const Vector<U, N - 1>& x, V s) : Vector{x, s, std::make_index_sequence<N - 1>{}} {}
+
     T& e(size_t i) { return e_[i]; }
     constexpr const T& e(size_t i) const { return e_[i]; }
 

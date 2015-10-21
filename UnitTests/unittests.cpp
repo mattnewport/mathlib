@@ -18,15 +18,13 @@ using namespace DirectX;
 
 using namespace mathlib;
 
-namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework { 
-template<typename T, size_t N>
+using namespace std::literals;
+
+namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework {
+template <typename T, size_t N>
 std::wstring ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
-template<typename T, size_t M, size_t N>
-std::wstring ToString(const Matrix<T, M, N>& x) {
-    std::wstring res;
-    for (int i = 0; i < M; ++i) res += ToString(x.row(i));
-    return res;
-}
+template <typename T, size_t M, size_t N>
+std::wstring ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
 }}}
 
 namespace UnitTests {
@@ -56,7 +54,13 @@ public :
         const Vec2f v6{1.0f, 2.0f};
         Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
-        const Vector<Vec2f, 2> v7{ Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f} };
+        const Vector<Vec2f, 2> v7{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
+        Assert::IsTrue(std::equal(std::begin(v7.e(0)), std::end(v7.e(1)),
+                                  stdext::make_unchecked_array_iterator(std::begin({1.0f, 2.0f,
+                                                                                    3.0f, 4.0f}))));
+
+        const auto v8 = Vec3f{v6, 3.0f};
+        Assert::AreEqual(v8, Vec3f{1.0f, 2.0f, 3.0f});
 
         static_assert(IsVector<Vec4f>::value, "");
         static_assert(!IsVector<std::tuple<int, int>>::value, "");
@@ -194,6 +198,8 @@ TEST_CLASS(MatrixUnitTests){
 
         const auto m5 = zeroMatrix<float, 3, 4>();
         Assert::IsTrue(std::all_of(std::begin(m5), std::end(m5), [](auto x) { return x == 0.0f; }));
+
+        Assert::AreEqual(ToString(m0), L"{{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}}"s);
     }
 
     TEST_METHOD(TestMatrixAdd) {
