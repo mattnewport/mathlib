@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <algorithm>
+#include <iterator>
 #include <type_traits>
 
 #include "CppUnitTest.h"
@@ -55,6 +57,11 @@ public :
         Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
         const Vector<Vec2f, 2> v7{ Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f} };
+
+        static_assert(IsVector<Vec4f>::value, "");
+        static_assert(!IsVector<std::tuple<int, int>>::value, "");
+        static_assert(VectorDimension<Vec4f>::value == 4, "");
+        static_assert(std::is_same<float, VectorElementType_t<Vec4f>>::value, "");
     }
 
     TEST_METHOD(TestAdd) {
@@ -161,23 +168,48 @@ TEST_CLASS(MatrixUnitTests){
     public :
 
     TEST_METHOD(TestMatrixBasics){
-        const auto m = IdentityMatrix<float, 3, 4>();
-        Assert::IsTrue(m.e(0, 0) == 1.0f && m.e(1, 1) == 1.0f && m.e(2, 2) == 1.0f && m.e(0, 1) == 0.0f &&
-                       m.e(0, 2) == 0.0f && m.e(0, 3) == 0.0f && m.e(1, 0) == 0.0f && m.e(1, 2) == 0.0f &&
-                       m.e(1, 3) == 0.0f && m.e(2, 0) == 0.0f && m.e(2, 1) == 0.0f && m.e(2, 3) == 0.0f);
+        const auto m0 = MatrixFromRows(Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
+            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f});
+        const auto m1 = MatrixFromColumns(Vec3f{1.0f, 5.0f, 9.0f}, Vec3f{2.0f, 6.0f, 10.0f},
+                                          Vec3f{3.0f, 7.0f, 11.0f}, Vec3f{4.0f, 8.0f, 12.0f});
+        Assert::AreEqual(m0, m1);
 
-        const auto scale = Mat4fScale(3.0f);
+        const auto m2 = identityMatrix<float, 3, 4>();
+        const auto m3 = MatrixFromRows(Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
+                                       Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
+        Assert::AreEqual(m2, m3);
+
+        const auto scale = scaleMat4f(3.0f);
         Assert::AreEqual(scale,
                          Mat4f{Vec4f{3.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 3.0f, 0.0f, 0.0f},
                                Vec4f{0.0f, 0.0f, 3.0f, 0.0f}, Vec4f{0.0f, 0.0f, 0.0f, 1.0f}});
+
+        const auto m4 =
+            Mat4fFromRows({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f},
+                          {9.0f, 10.0f, 11.0f, 12.0f}, {13.0f, 14.0f, 15.0f, 16.0f});
+        Assert::IsTrue(std::equal(std::begin(m4), std::end(m4),
+                                  stdext::make_unchecked_array_iterator(std::begin(
+                                      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+                                       11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f}))));
+
+        const auto m5 = zeroMatrix<float, 3, 4>();
+        Assert::IsTrue(std::all_of(std::begin(m5), std::end(m5), [](auto x) { return x == 0.0f; }));
     }
 
     TEST_METHOD(TestMatrixAdd) {
-        const auto m1 = IdentityMatrix<float, 4, 4>();
-        const auto m2 = Mat4fScale(3.0f);
+        const auto m1 = identityMatrix<float, 4, 4>();
+        const auto m2 = scaleMat4f(3.0f);
         const auto m3 = m1 + m2;
         Assert::AreEqual(m3, Mat4f{ Vec4f{ 4.0f, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, 4.0f, 0.0f, 0.0f },
             Vec4f{ 0.0f, 0.0f, 4.0f, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 2.0f } });
+    }
+
+    TEST_METHOD(TestMatrixScalarMultiply) {
+        const auto m1 = Mat4fFromRows({ 1.0f, 2.0f, 3.0f, 4.0f }, { 5.0f, 6.0f, 7.0f, 8.0f },
+                                      { 9.0f, 10.0f, 11.0f, 12.0f }, { 13.0f, 14.0f, 15.0f, 16.0f });
+        const auto m2 = m1 * 0.5f;
+        Assert::AreEqual(m2, Mat4fFromRows({0.5f, 1.0f, 1.5f, 2.0f}, {2.5f, 3.0f, 3.5f, 4.0f},
+                                           {4.5f, 5.0f, 5.5f, 6.0f}, {6.5f, 7.0f, 7.5f, 8.0f}));
     }
 
     TEST_METHOD(TestMatrixColumnAccess){
@@ -223,7 +255,7 @@ TEST_CLASS(MatrixUnitTests){
 
     TEST_METHOD(TestMatrix4fRotationY) {
         const auto angle = pif / 4.0f;
-        auto m = Mat4fRotationY(angle);
+        auto m = rotationYMat4f(angle);
         auto xmm = XMMatrixRotationY(angle);
         Assert::IsTrue(memcmp(&m, &xmm, sizeof(m)) == 0);
     }

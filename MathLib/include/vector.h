@@ -10,21 +10,11 @@
 // Vectors are treated as row vectors for the purposes of matrix multiplication (so to transform a
 // Vector v by a Matrix M use v * M rather than M * v)
 
-// Observations on efficient usage of Vector types.
-//
 // This code is very generic and uses multiple layers of function helpers, it compiles down to
 // pretty efficient code in release builds but in debug builds without any inlining it will be
 // pretty inefficient. Using /Ob1
 // http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug builds in Visual Studio will help
 // debug performance a lot.
-//
-// You probably want to work with vec4fs as local variables and do all / most of your calculations
-// with them, keeping vec3fs as mostly a storage format. This is because vec4fs are implemented as
-// native SIMD vector types and most simple operations map to a single intrinsic. It is inefficient
-// to work with vec3fs as native SIMD types since the compiler can not make intelligent decisions
-// about when to keep values in registers. The exception to this is when doing bulk operations on
-// arrays of vec3fs in which case for optimum efficiency you would write custom vector code in SoA
-// rather than AoS style operating on multiple elements of the array at once.
 
 namespace mathlib {
 
@@ -39,8 +29,6 @@ using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_
 template <typename T, size_t N>
 class Vector {
 public:
-    static const size_t dimension = N;
-
     constexpr Vector() = default;
 
     // Standard constructor taking a sequence of exactly N objects convertible to T (no narrowing
@@ -104,6 +92,8 @@ public:
     auto begin() const { return std::begin(e_); }
     auto end() const { return std::end(e_); }
 
+    const T* data() const { return e_; }
+
     template<typename U>
     Vector& operator+=(const Vector<U, N>& x) {
         return plusEquals(x, std::make_index_sequence<N>{});
@@ -161,6 +151,29 @@ private:
     }
 };
 
+template<typename T>
+struct IsVector : std::false_type {};
+
+template<typename T, size_t N>
+struct IsVector<Vector<T, N>> : std::true_type {};
+
+template<typename T>
+struct VectorDimension;
+
+template<typename T, size_t N>
+struct VectorDimension<Vector<T, N>> : std::integral_constant<size_t, N> {};
+
+template<typename T>
+struct VectorElementType;
+
+template<typename T, size_t N>
+struct VectorElementType<Vector<T, N>> {
+    using type = T;
+};
+
+template<typename T>
+using VectorElementType_t = typename VectorElementType<T>::type;
+
 using Vec2f = Vector<float, 2>;
 using Vec3f = Vector<float, 3>;
 using Vec4f = Vector<float, 4>;
@@ -168,6 +181,21 @@ using Vec4f = Vector<float, 4>;
 using Vec2i = Vector<int, 2>;
 using Vec3i = Vector<int, 3>;
 using Vec4i = Vector<int, 4>;
+
+template<typename T, size_t N>
+constexpr auto zeroVector() {
+    return Vector<T, N>{T(0)};
+}
+
+template <typename T, size_t N, size_t... Js>
+constexpr auto basisVector(size_t i, std::index_sequence<Js...>) {
+    return Vector<T, N>{T(i == Js)...};
+}
+
+template<typename T, size_t N>
+constexpr auto basisVector(size_t i) {
+    return basisVector<T, N>(i, std::make_index_sequence<N>{});
+}
 
 // Apply a function F(T) to each element of Vector x and return a new Vector of the results
 template <typename F, size_t... Is, typename T, size_t N>

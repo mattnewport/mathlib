@@ -27,12 +27,32 @@ public:
     T& e(size_t r, size_t c) { return Vector::e(r).e(c); }
     constexpr const T& e(size_t r, size_t c) const { return Vector::e(r).e(c); }
 
-    const float* data() const { return &e(0, 0); }
+    auto begin() { return std::begin(Vector::e(0)); }
+    auto end() { return std::end(Vector::e(M - 1)); }
+    auto begin() const { return std::begin(Vector::e(0)); }
+    auto end() const { return std::end(Vector::e(M - 1)); }
+
+    const float* data() const { return row(0).data(); }
 
     const auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
 };
 
 using Mat4f = Matrix<float, 4, 4>;
+
+template <typename... Us>
+constexpr auto MatrixFromRows(const Us&... us) {
+    using RowVectorType = std::common_type_t<Us...>;
+    return Matrix<VectorElementType_t<RowVectorType>, sizeof...(Us),
+                  VectorDimension<RowVectorType>::value>{us...};
+}
+
+// Handy to have this concrete version that can deduce the type of the arguments, e.g. you can do:
+// auto m = Mat4fFromRows({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f}, ...)
+// rather than the slightly more verbose:
+// auto m = MatrixFromRows(Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f}, ...)
+constexpr auto Mat4fFromRows(Vec4f r0, Vec4f r1, Vec4f r2, Vec4f r3) {
+    return MatrixFromRows(r0, r1, r2, r3);
+}
 
 template<typename T, size_t M, size_t N, size_t... Is>
 constexpr auto transpose(const Matrix<T, M, N>& x, std::index_sequence<Is...>) {
@@ -44,6 +64,11 @@ constexpr auto transpose(const Matrix<T, M, N>& x) {
     return transpose(x, std::make_index_sequence<N>{});
 }
 
+template <typename... Us>
+constexpr auto MatrixFromColumns(const Us&... us) {
+    return transpose(MatrixFromRows(us...));
+}
+
 template<typename T, typename U, size_t M, size_t N>
 constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
     return x.rows() == y.rows();
@@ -52,6 +77,11 @@ constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
 template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
     return Matrix<decltype(x.e(0, 0) + y.e(0, 0)), M, N>{x.rows() + y.rows()};
+}
+
+template <typename T, typename U, size_t M, size_t N>
+constexpr auto operator*(const Matrix<T, M, N>& x, U s) {
+    return Matrix<decltype(x.e(0, 0) * s), M, N>{x.rows() * s};
 }
 
 template <typename T, size_t M, size_t N, size_t... Is>
@@ -88,42 +118,37 @@ inline auto toMat4f(const DirectX::XMMATRIX& m) {
     return res;
 }
 
-template <typename T, size_t N, size_t... Js>
-constexpr auto makeBasisVector(size_t i, std::index_sequence<Js...>) {
-    return Vector<T, N>{T(i == Js)...};
-}
-
-template<typename T, size_t N>
-constexpr auto makeBasisVector(size_t i) {
-    return makeBasisVector<T, N>(i, std::make_index_sequence<N>{});
+template <typename T, size_t M, size_t N>
+constexpr auto zeroMatrix() {
+    return Matrix<T, M, N>{zeroVector<T, N>()};
 }
 
 template <typename T, size_t N, size_t... Is>
-constexpr auto IdentityMatrix(std::index_sequence<Is...>) {
-    return Matrix<T, sizeof...(Is), N>{makeBasisVector<T, N>(Is)...};
+constexpr auto identityMatrix(std::index_sequence<Is...>) {
+    return Matrix<T, sizeof...(Is), N>{basisVector<T, N>(Is)...};
 }
 
 template <typename T, size_t M, size_t N>
-constexpr auto IdentityMatrix() {
-    return IdentityMatrix<T, N>(std::make_index_sequence<M>{});
+constexpr auto identityMatrix() {
+    return identityMatrix<T, N>(std::make_index_sequence<M>{});
 }
 
-inline auto Mat4fScale(float s) {
+inline auto scaleMat4f(float s) {
     return Mat4f{ Vec4f{ s, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, s, 0.0f, 0.0f },
         Vec4f{ 0.0f, 0.0f, s, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
-inline auto Mat4fTranslation(const Vec3f& t) {
+inline auto translationMat4f(const Vec3f& t) {
     return Mat4f{Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
                  Vec4f{0.0f, 0.0f, 1.0f, 0.0f}, Vec4f{t.x(), t.y(), t.z(), 1.0f}};
 }
 
-inline auto Mat4fRotationY(float angle) {
+inline auto rotationYMat4f(float angle) {
     auto xmm = DirectX::XMMatrixRotationY(angle);
     return toMat4f(xmm);
 }
 
-inline auto Mat4fLookAtRH(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
+inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
     auto xmm = DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up));
     return toMat4f(xmm);
 }
