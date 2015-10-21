@@ -51,7 +51,7 @@ public:
     // For convenience we have an explicit constructor taking a single argument that sets all
     // members of the vector to the value of that argument.
     template <typename U, size_t... Is>
-    explicit constexpr Vector(U u, std::index_sequence<Is...>) : e_{(Is, u)...} {}
+    explicit constexpr Vector(U u, std::index_sequence<Is...>) : e_{((void)Is, u)...} {}
     // MNTODO: can't make this constexpr due to a bug in VS2015:
     // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
     template <typename U>
@@ -66,7 +66,7 @@ public:
     Vector(const Vector<U, N>& x) : Vector{x, std::make_index_sequence<N>{}} {}
 
     T& e(size_t i) { return e_[i]; }
-    constexpr T e(size_t i) const { return e_[i]; }
+    constexpr const T& e(size_t i) const { return e_[i]; }
 
     T& x() {
         return e_[0];

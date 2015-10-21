@@ -19,6 +19,12 @@ using namespace mathlib;
 namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework { 
 template<typename T, size_t N>
 std::wstring ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
+template<typename T, size_t M, size_t N>
+std::wstring ToString(const Matrix<T, M, N>& x) {
+    std::wstring res;
+    for (int i = 0; i < M; ++i) res += ToString(x.row(i));
+    return res;
+}
 }}}
 
 namespace UnitTests {
@@ -47,6 +53,8 @@ public :
         Assert::IsTrue(v5 == v0);
         const Vec2f v6{1.0f, 2.0f};
         Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
+
+        const Vector<Vec2f, 2> v7{ Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f} };
     }
 
     TEST_METHOD(TestAdd) {
@@ -150,7 +158,29 @@ public :
 };
 
 TEST_CLASS(MatrixUnitTests){
-    public : TEST_METHOD(TestMatrixColumnAccess){
+    public :
+
+    TEST_METHOD(TestMatrixBasics){
+        const auto m = IdentityMatrix<float, 3, 4>();
+        Assert::IsTrue(m.e(0, 0) == 1.0f && m.e(1, 1) == 1.0f && m.e(2, 2) == 1.0f && m.e(0, 1) == 0.0f &&
+                       m.e(0, 2) == 0.0f && m.e(0, 3) == 0.0f && m.e(1, 0) == 0.0f && m.e(1, 2) == 0.0f &&
+                       m.e(1, 3) == 0.0f && m.e(2, 0) == 0.0f && m.e(2, 1) == 0.0f && m.e(2, 3) == 0.0f);
+
+        const auto scale = Mat4fScale(3.0f);
+        Assert::AreEqual(scale,
+                         Mat4f{Vec4f{3.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 3.0f, 0.0f, 0.0f},
+                               Vec4f{0.0f, 0.0f, 3.0f, 0.0f}, Vec4f{0.0f, 0.0f, 0.0f, 1.0f}});
+    }
+
+    TEST_METHOD(TestMatrixAdd) {
+        const auto m1 = IdentityMatrix<float, 4, 4>();
+        const auto m2 = Mat4fScale(3.0f);
+        const auto m3 = m1 + m2;
+        Assert::AreEqual(m3, Mat4f{ Vec4f{ 4.0f, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, 4.0f, 0.0f, 0.0f },
+            Vec4f{ 0.0f, 0.0f, 4.0f, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 2.0f } });
+    }
+
+    TEST_METHOD(TestMatrixColumnAccess){
         const auto m = Mat4f{Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
                        Vec4f{9.0f, 10.0f, 11.0f, 12.0f}, Vec4f{13.0f, 14.0f, 15.0f, 16.0f}};
         const auto c0 = m.column(0);

@@ -15,16 +15,15 @@ template <typename T, size_t M, size_t N>
 class Matrix {
 public:
     Matrix() = default;
-    Matrix(const Matrix&) = default;
-
+    constexpr Matrix(const Vector<Vector<T, N>, M>& x) : rows_{x} {}
     template <typename U, typename... Us, typename = std::enable_if_t<sizeof...(Us) == M - 1>>
     constexpr Matrix(const Vector<U, N>& v, const Vector<Us, N>&... vs) : rows_{v, vs...} {}
 
-    Vector<T, N>& row(size_t n) { return rows_[n]; }
-    const Vector<T, N>& row(size_t n) const { return rows_[n]; }
+    Vector<T, N>& row(size_t n) { return rows_.e(n); }
+    const Vector<T, N>& row(size_t n) const { return rows_.e(n); }
     template <size_t... Is>
     constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const {
-        return Vector<T, M>{rows_[Is].e(n)...};
+        return Vector<T, M>{rows_.e(Is).e(n)...};
     }
     constexpr auto column(size_t n) const { return columnHelper(n, std::make_index_sequence<M>{}); }
 
@@ -33,8 +32,10 @@ public:
 
     const float* data() const { return &e(0, 0); }
 
+    const auto& rows() const { return rows_; }
+
 private:
-    Vector<T, N> rows_[M];
+    Vector<Vector<T, N>, M> rows_;
 };
 
 using Mat4f = Matrix<float, 4, 4>;
@@ -50,12 +51,13 @@ constexpr auto transpose(const Matrix<T, M, N>& x) {
 }
 
 template<typename T, typename U, size_t M, size_t N>
-inline auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
-    auto equal = true;
-    for (int i = 0; i < M; ++i) {
-        equal = equal && x.row(i) == y.row(i);
-    }
-    return equal;
+constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
+    return x.rows() == y.rows();
+}
+
+template <typename T, typename U, size_t M, size_t N>
+constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
+    return Matrix<decltype(x.e(0, 0) + y.e(0, 0)), M, N>{x.rows() + y.rows()};
 }
 
 template <typename T, size_t M, size_t N, size_t... Is>
@@ -90,6 +92,26 @@ inline auto toMat4f(const DirectX::XMMATRIX& m) {
     auto res = Mat4f{};
     memcpy(&res, &m, sizeof(res));
     return res;
+}
+
+template <typename T, size_t N, size_t... Js>
+constexpr auto makeBasisVector(size_t i, std::index_sequence<Js...>) {
+    return Vector<T, N>{T(i == Js)...};
+}
+
+template<typename T, size_t N>
+constexpr auto makeBasisVector(size_t i) {
+    return makeBasisVector<T, N>(i, std::make_index_sequence<N>{});
+}
+
+template <typename T, size_t N, size_t... Is>
+constexpr auto IdentityMatrix(std::index_sequence<Is...>) {
+    return Matrix<T, sizeof...(Is), N>{makeBasisVector<T, N>(Is)...};
+}
+
+template <typename T, size_t M, size_t N>
+constexpr auto IdentityMatrix() {
+    return IdentityMatrix<T, N>(std::make_index_sequence<M>{});
 }
 
 constexpr auto Mat4fScale(float s) {
