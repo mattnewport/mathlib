@@ -12,30 +12,24 @@
 namespace mathlib {
 
 template <typename T, size_t M, size_t N>
-class Matrix {
+class Matrix : private Vector<Vector<T, N>, M> {
 public:
-    Matrix() = default;
-    constexpr Matrix(const Vector<Vector<T, N>, M>& x) : rows_{x} {}
-    template <typename U, typename... Us, typename = std::enable_if_t<sizeof...(Us) == M - 1>>
-    constexpr Matrix(const Vector<U, N>& v, const Vector<Us, N>&... vs) : rows_{v, vs...} {}
+    using Vector::Vector;
 
-    Vector<T, N>& row(size_t n) { return rows_.e(n); }
-    const Vector<T, N>& row(size_t n) const { return rows_.e(n); }
+    Vector<T, N>& row(size_t n) { return Vector::e(n); }
+    const Vector<T, N>& row(size_t n) const { return Vector::e(n); }
     template <size_t... Is>
     constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const {
-        return Vector<T, M>{rows_.e(Is).e(n)...};
+        return Vector<T, M>{Vector::e(Is).e(n)...};
     }
     constexpr auto column(size_t n) const { return columnHelper(n, std::make_index_sequence<M>{}); }
 
-    T& e(size_t r, size_t c) { return row(r).e(c); }
-    constexpr const T& e(size_t r, size_t c) const { return row(r).e(c); }
+    T& e(size_t r, size_t c) { return Vector::e(r).e(c); }
+    constexpr const T& e(size_t r, size_t c) const { return Vector::e(r).e(c); }
 
     const float* data() const { return &e(0, 0); }
 
-    const auto& rows() const { return rows_; }
-
-private:
-    Vector<Vector<T, N>, M> rows_;
+    const auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
 };
 
 using Mat4f = Matrix<float, 4, 4>;
@@ -114,12 +108,12 @@ constexpr auto IdentityMatrix() {
     return IdentityMatrix<T, N>(std::make_index_sequence<M>{});
 }
 
-constexpr auto Mat4fScale(float s) {
+inline auto Mat4fScale(float s) {
     return Mat4f{ Vec4f{ s, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, s, 0.0f, 0.0f },
         Vec4f{ 0.0f, 0.0f, s, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
-constexpr auto Mat4fTranslation(const Vec3f& t) {
+inline auto Mat4fTranslation(const Vec3f& t) {
     return Mat4f{Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
                  Vec4f{0.0f, 0.0f, 1.0f, 0.0f}, Vec4f{t.x(), t.y(), t.z(), 1.0f}};
 }
