@@ -243,6 +243,16 @@ template <typename T, size_t N, size_t... Js>
 constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) {
     return Vector<T, N>{T(i == Js)...};
 }
+
+template <typename T, typename U, size_t N>
+constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
+    return memberwiseScalar(std::divides<>{}, a, s);
+}
+template <typename T, typename U, size_t N>
+constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
+    return a * (T{ 1 } / s);
+}
+
 }
 
 using Vec2f = Vector<float, 2>;
@@ -277,6 +287,7 @@ constexpr auto memberwise(F&& f, Us&&... us) {
 }
 
 // Apply a function F(T, U) to elements of Vector x and scalar y and return a Vector of the results
+// For example: memberwiseScalar(op*, Vex3f x, float y) returns Vec3f{x.x*y, x.y*y, x.z*y}
 template <typename F, typename T, typename U, size_t N>
 constexpr auto memberwiseScalar(F&& f, const Vector<T, N>& x, U y) {
     return detail::memberwiseScalarImpl(std::forward<F>(f), std::make_index_sequence<N>{}, x, y);
@@ -296,6 +307,7 @@ constexpr auto make_tuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
     return std::make_tuple(a.e(Is)...);
 }
 
+// standard operators and vector specific functions (dot() etc.)
 template <typename T, typename U, size_t N>
 constexpr bool operator==(const Vector<T, N>& a, const Vector<U, N>& b) {
     return make_tuple(a, std::make_index_sequence<N>{}) ==
@@ -334,17 +346,8 @@ constexpr auto operator*(T s, const Vector<U, N>& a) {
 }
 
 template <typename T, typename U, size_t N>
-constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
-    return memberwiseScalar(std::divides<>{}, a, s);
-}
-template <typename T, typename U, size_t N>
-constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
-    return a * (T{1} / s);
-}
-
-template <typename T, typename U, size_t N>
 constexpr auto operator/(const Vector<T, N>& a, U s) {
-    return divide(a, s, tag<U>{});
+    return detail::divide(a, s, tag<U>{});
 }
 
 template <typename T, typename U, size_t N>
