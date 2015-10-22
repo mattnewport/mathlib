@@ -112,6 +112,9 @@ public :
         static_assert(!IsVector<std::tuple<int, int>>::value, "");
         static_assert(VectorDimension<Vec4f>::value == 4, "");
         static_assert(std::is_same<float, VectorElementType_t<Vec4f>>::value, "");
+
+        constexpr auto& v9 = v1;
+        constexpr auto v10{v9};
     }
 
     TEST_METHOD(TestAdd) {
@@ -351,6 +354,15 @@ TEST_CLASS(MatrixUnitTests){
                               Vec4f{3.0f, 7.0f, 11.0f, 15.0f}, Vec4f{4.0f, 8.0f, 12.0f, 16.0f}};
         Assert::IsTrue(m1 == m2);
     }
+};
+
+TEST_CLASS(QuaternionUnitTests) {
+    TEST_METHOD(TestQuaternionBasics) {
+        Quatf q0{ {1.0f, 2.0f, 3.0f}, 4.0f };
+        Quatf q1{ q0 };
+        Assert::IsTrue(q0.x() == 1.0f && q0.y() == 2.0f && q0.z() == 3.0f && q0.w() == 4.0f);
+    }
+
 };
 
 }

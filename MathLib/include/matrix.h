@@ -19,55 +19,73 @@ public:
     // initialize all M rows.
     using Vector::Vector;
 
+    // Row and column access
     Vector<T, N>& row(size_t n) { return Vector::e(n); }
     const Vector<T, N>& row(size_t n) const { return Vector::e(n); }
-    template <size_t... Is>
-    constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const {
-        return Vector<T, M>{Vector::e(Is).e(n)...};
-    }
     constexpr auto column(size_t n) const { return columnHelper(n, std::make_index_sequence<M>{}); }
 
+    // Element access
     T& e(size_t r, size_t c) { return Vector::e(r).e(c); }
     constexpr const T& e(size_t r, size_t c) const { return Vector::e(r).e(c); }
 
+    // These begin() and end() functions allow a Matrix to be used like a container for element
+    // access. Not generally recommended but sometimes useful.
     auto begin() { return std::begin(Vector::e(0)); }
     auto end() { return std::end(Vector::e(M - 1)); }
     auto begin() const { return std::begin(Vector::e(0)); }
     auto end() const { return std::end(Vector::e(M - 1)); }
 
+    // Return a pointer to the raw underlying contiguous element data.
     const float* data() const { return row(0).data(); }
 
+    // Access the matrix as a const Vector<Vector<T, N>, M>& - not really intended for end user use
+    // but helpful to implement freestanding operators and could be useful to users.
     const auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
 
-    template<typename U>
+    // @= operators - just delegate to Vector via rows() for implementations
+    template <typename U>
     auto& operator+=(const Matrix<U, M, N>& x) {
         rows() += x.rows();
         return *this;
     }
-    template<typename U>
+    template <typename U>
     auto& operator-=(const Matrix<U, M, N>& x) {
         rows() -= x.rows();
         return *this;
     }
-    template<typename U>
+    template <typename U>
     auto& operator*=(U s) {
         rows() *= s;
         return *this;
     }
-    template<typename U>
+    template <typename U>
     auto& operator/=(U s) {
         rows() /= s;
         return *this;
     }
+
 private:
     auto& rows() { return static_cast<Vector<Vector<T, N>, M>&>(*this); }
+    template <size_t... Is>
+    constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const {
+        return Vector<T, M>{Vector::e(Is).e(n)...};
+    }
 };
+
+// Implementation helpers for operators and free functions, not part of public API
+namespace detail {
+template <typename T, size_t M, size_t N, size_t... Is>
+constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
+                                std::index_sequence<Is...>) {
+    return Vector<T, N>{dot(v, m.column(Is))...};
+}
+}
 
 using Mat4f = Matrix<float, 4, 4>;
 
 template <typename... Us>
-constexpr auto MatrixFromRows(const Us&... us) {
-    using RowVectorType = std::common_type_t<Us...>;
+constexpr auto MatrixFromRows(Us&&... us) {
+    using RowVectorType = std::common_type_t<std::remove_reference_t<Us>...>;
     return Matrix<VectorElementType_t<RowVectorType>, sizeof...(Us),
                   VectorDimension<RowVectorType>::value>{us...};
 }
@@ -80,12 +98,12 @@ constexpr auto Mat4fFromRows(Vec4f r0, Vec4f r1, Vec4f r2, Vec4f r3) {
     return MatrixFromRows(r0, r1, r2, r3);
 }
 
-template<typename T, size_t M, size_t N, size_t... Is>
+template <typename T, size_t M, size_t N, size_t... Is>
 constexpr auto transpose(const Matrix<T, M, N>& x, std::index_sequence<Is...>) {
     return Matrix<T, N, M>{x.column(Is)...};
 }
 
-template<typename T, size_t M, size_t N, size_t... Is>
+template <typename T, size_t M, size_t N, size_t... Is>
 constexpr auto transpose(const Matrix<T, M, N>& x) {
     return transpose(x, std::make_index_sequence<N>{});
 }
@@ -95,7 +113,7 @@ constexpr auto MatrixFromColumns(const Us&... us) {
     return transpose(MatrixFromRows(us...));
 }
 
-template<typename T, typename U, size_t M, size_t N>
+template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
     return x.rows() == y.rows();
 }
@@ -120,18 +138,12 @@ constexpr auto operator*(U s, const Matrix<T, M, N>& x) {
     return x * s;
 }
 
-template <typename T, size_t M, size_t N, size_t... Is>
-constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
-                             std::index_sequence<Is...>) {
-    return Vector<T, N>{dot(v, m.column(Is))...};
-}
-
-template<typename T, size_t M, size_t N>
+template <typename T, size_t M, size_t N>
 constexpr auto operator*(const Vector<T, M>& v, const Matrix<T, M, N>& m) {
-    return vecMatMultHelper(v, m, std::make_index_sequence<N>{});
+    return detail::vecMatMultHelper(v, m, std::make_index_sequence<N>{});
 }
 
-template<typename T, typename U, size_t M, size_t N, size_t P>
+template <typename T, typename U, size_t M, size_t N, size_t P>
 inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) {
     Matrix<std::common_type_t<T, U>, M, P> res;
     for (auto c = 0; c < N; ++c) {
@@ -170,8 +182,8 @@ constexpr auto identityMatrix() {
 }
 
 inline auto scaleMat4f(float s) {
-    return Mat4f{ Vec4f{ s, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, s, 0.0f, 0.0f },
-        Vec4f{ 0.0f, 0.0f, s, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 1.0f } };
+    return Mat4f{Vec4f{s, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, s, 0.0f, 0.0f}, Vec4f{0.0f, 0.0f, s, 0.0f},
+                 Vec4f{0.0f, 0.0f, 0.0f, 1.0f}};
 }
 
 inline auto translationMat4f(const Vec3f& t) {
