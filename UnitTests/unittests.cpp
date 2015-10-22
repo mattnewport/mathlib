@@ -121,6 +121,7 @@ public:
         Vec3f v14 = v13;
 
         Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
+        Assert::IsTrue(-v14 + +v14 == zeroVector<float, 3>());
     }
 
     TEST_METHOD(TestAdd) {
@@ -273,6 +274,7 @@ public:
         Assert::AreEqual(m0, m1);
         Assert::IsTrue(m0.e(0, 0) == m0[0][0] && m0[0][0] == 1.0f);
         Assert::IsTrue(m0.e(1, 2) == m0[1][2] && m0[1][2] == 7.0f);
+        Assert::AreEqual(-m0 + +m1, zeroMatrix<float, 3, 4>());
 
         const auto m2 = identityMatrix<float, 3, 4>();
         const auto m3 = MatrixFromRows(Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},

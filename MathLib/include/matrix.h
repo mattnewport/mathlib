@@ -120,9 +120,19 @@ constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
     return x.rows() == y.rows();
 }
 
+template <typename T, size_t M, size_t N>
+constexpr auto operator+(const Matrix<T, M, N>& x) {
+    return x;
+}
+
 template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
     return Matrix<decltype(x.e(0, 0) + y.e(0, 0)), M, N>{x.rows() + y.rows()};
+}
+
+template <typename T, size_t M, size_t N>
+constexpr auto operator-(const Matrix<T, M, N>& x) {
+    return Matrix<T, M, N>{-x.rows()};
 }
 
 template <typename T, typename U, size_t M, size_t N>

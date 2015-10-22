@@ -372,9 +372,19 @@ constexpr bool operator<(const Vector<T, N>& a, const Vector<U, N>& b) {
     return asTuple(a) < asTuple(b);
 }
 
+template<typename T, size_t N>
+constexpr auto operator+(const Vector<T, N>& x) {
+    return x;
+}
+
 template <typename T, typename U, size_t N>
 constexpr auto operator+(const Vector<T, N>& a, const Vector<U, N>& b) {
     return memberwise(std::plus<>{}, a, b);
+}
+
+template<typename T, size_t N>
+constexpr auto operator-(const Vector<T, N>& x) {
+    return memberwise(std::negate<>{}, x);
 }
 
 template <typename T, typename U, size_t N>
