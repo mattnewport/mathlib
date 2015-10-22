@@ -242,6 +242,16 @@ public :
         constexpr auto v7 = v0.xy();
         Assert::AreEqual(v7, Vec2f{v0.x(), v0.y()});
     }
+
+    TEST_METHOD(TestCross) {
+        constexpr auto v0 = Vec3f{ 1.0f, 2.0f, 3.0f };
+        constexpr auto v1 = Vec3f{ 4.0f, 5.0f, 6.0f };
+        constexpr auto v2 = cross(v0, v1);
+        XMVECTOR xv0{ v0.x(), v0.y(), v0.z(), 0.0f };
+        XMVECTOR xv1{ v1.x(), v1.y(), v1.z(), 0.0f };
+        auto xv2 = XMVector3Cross(xv0, xv1);
+        Assert::IsTrue(memcmp(&xv2, &v2, sizeof(v2)) == 0);
+    }
 };
 
 TEST_CLASS(MatrixUnitTests){

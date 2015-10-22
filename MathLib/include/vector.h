@@ -91,6 +91,8 @@ public:
     // Common swizzles
     constexpr auto xy() const { return swizzle<X, Y>(*this); }
     constexpr auto xyz() const { return swizzle<X, Y, Z>(*this); }
+    constexpr auto yzx() const { return swizzle<Y, Z, X>(*this); }
+    constexpr auto zxy() const { return swizzle<Z, X, Y>(*this); }
 
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
@@ -366,9 +368,14 @@ constexpr auto operator/(const Vector<T, N>& a, U s) {
     return detail::divide(a, s, tag<U>{});
 }
 
+template<typename T, typename U, size_t N>
+constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<U, N>& y) {
+    return memberwise(std::multiplies<>{}, x, y);
+}
+
 template <typename T, typename U, size_t N>
 constexpr auto dot(const Vector<T, N>& a, const Vector<U, N>& b) {
-    return fold(std::plus<>{}, memberwise(std::multiplies<>{}, a, b));
+    return fold(std::plus<>{}, memberwiseMultiply(a, b));
 }
 
 template <typename T, size_t N>
@@ -416,10 +423,9 @@ constexpr auto clamp(const Vector<T, N>& x, const Vector<U, N>& a, const Vector<
     return memberwise([](auto x, auto a, auto b) { return clamp(x, a, b); }, x, a, b);
 }
 
-template <typename T>
-constexpr Vector<T, 3> cross(const Vector<T, 3>& a, const Vector<T, 3>& b) {
-    return {a.y() * b.z() - a.z() * b.y(), a.z() * b.x() - a.x() * b.z(),
-            a.x() * b.y() - a.y() * b.x()};
+template <typename T, typename U>
+constexpr Vector<T, 3> cross(const Vector<T, 3>& a, const Vector<U, 3>& b) {
+    return memberwiseMultiply(a.yzx(), b.zxy()) - memberwiseMultiply(a.zxy(), b.yzx());
 }
 
 }  // namespace mathlib
