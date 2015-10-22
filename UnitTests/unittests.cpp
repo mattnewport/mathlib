@@ -28,6 +28,52 @@ std::wstring ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
 }}}
 
 namespace UnitTests {
+
+TEST_CLASS(FuncsUnitTests) {
+public:
+    TEST_METHOD(TestLerp) {
+        auto x0 = lerp(0.0f, 1.0f, 0.3f);
+        Assert::AreEqual(x0, 0.3f);
+        auto x1 = lerp(1.0f, 3.0f, 0.6f);
+        Assert::AreEqual(x1, 2.2f);
+    }
+
+    TEST_METHOD(TestMax) {
+        constexpr auto v0 = Vec3f{ -0.5f, 2.0f, 1.1f };
+        constexpr auto v1 = Vec3f{ 0.5f, 0.6f, 0.7f };
+        const auto v3 = max(v0, v1);
+        Assert::AreEqual(v3, Vec3f{ 0.5f, 2.0f, 1.1f });
+    }
+
+    TEST_METHOD(TestAbs) {
+        constexpr auto v0 = Vec3f{ -0.5f, 2.0f, 1.1f };
+        const auto v2 = abs(v0);
+        Assert::AreEqual(v2, Vec3f{ 0.5f, 2.0f, 1.1f });
+    }
+
+    TEST_METHOD(TestSaturate) {
+        constexpr auto v0 = Vec3f{ -0.5f, 2.0f, 0.9f };
+        const auto v2 = saturate(v0);
+        Assert::AreEqual(v2, Vec3f{ 0.0f, 1.0f, 0.9f });
+    }
+
+    TEST_METHOD(TestMinMaxElement) {
+        constexpr auto v0 = Vec3f{ 0.9f, 2.0f, -0.5f };
+        const auto s0 = minElement(v0);
+        const auto s1 = maxElement(v0);
+        Assert::AreEqual(s0, -0.5f);
+        Assert::AreEqual(s1, 2.0f);
+    }
+
+    TEST_METHOD(TestClamp) {
+        constexpr auto v0 = Vec3f{-0.5f, 2.0f, 1.1f};
+        constexpr auto v1 = Vec3f{0.5f, 0.6f, 0.7f};
+        constexpr auto v2 = Vec3f{1.5f, 1.6f, 1.7f};
+        const auto v3 = clamp(v0, v1, v2);
+        Assert::AreEqual(v3, Vec3f{0.5f, 1.6f, 1.1f});
+    }
+};
+
 TEST_CLASS(VectorUnitTests){
 public :
 

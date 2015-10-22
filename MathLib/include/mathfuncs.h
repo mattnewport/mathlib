@@ -15,4 +15,7 @@ constexpr auto saturate(T x) {
 template<typename T>
 constexpr auto square(T a) { return a * a; }
 
+template<typename T>
+constexpr auto lerp(T a, T b, T t) { return a + (b - a) * t; }
+
 }

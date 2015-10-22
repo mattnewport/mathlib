@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <iterator>
@@ -15,6 +16,10 @@
 // pretty inefficient. Using /Ob1
 // http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug builds in Visual Studio will help
 // debug performance a lot.
+
+// See this great blog post by Nathan Reed for some discussion of design decisions around vector
+// math libraries. He independently reaches many of the same design decisions that have been made
+// for this library: http://www.reedbeta.com/blog/2013/12/28/on-vector-math-libraries/
 
 namespace mathlib {
 
@@ -230,6 +235,18 @@ constexpr auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y) {
     return memberwise(f, std::make_index_sequence<N>{}, x, y);
 }
 
+// Apply a function F(T, U, V) memberwise to elements of x and y and return a new Vector of the results
+template <typename F, size_t... Is, typename T, typename U, typename V, size_t N>
+constexpr auto memberwise(F f, std::index_sequence<Is...>, const Vector<T, N>& x, const Vector<U, N>& y, const Vector<V, N>& z) {
+    using resvec = Vector<decltype(f(x.e(0), y.e(0), z.e(0))), N>;
+    return resvec{ f(x.e(Is), y.e(Is), z.e(Is))... };
+}
+
+template <typename F, typename T, typename U, typename V, size_t N>
+constexpr auto memberwise(F f, const Vector<T, N>& x, const Vector<U, N>& y, const Vector<V, N>& z) {
+    return memberwise(f, std::make_index_sequence<N>{}, x, y, z);
+}
+
 // Apply a function F(T, U) to elements of x with scalar y and return a new Vector of the results
 template <typename F, size_t... Is, typename T, typename U, size_t N>
 constexpr auto memberwise(F f, std::index_sequence<Is...>, const Vector<T, N>& x, U y) {
@@ -339,6 +356,41 @@ constexpr T magnitude(const Vector<T, N>& a) {
 template <typename T, size_t N>
 constexpr auto normalize(const Vector<T, N>& a) {
     return a * (T{1} / magnitude(a));
+}
+
+template <typename T, typename U, size_t N>
+constexpr auto min(const Vector<T, N>& x, const Vector<U, N>& y) {
+    return memberwise([](auto x, auto y) { return std::min(x, y); }, x, y);
+}
+
+template <typename T, typename U, size_t N>
+constexpr auto max(const Vector<T, N>& x, const Vector<U, N>& y) {
+    return memberwise([](auto x, auto y) { return std::max(x, y); }, x, y);
+}
+
+template<typename T, size_t N>
+inline auto& minElement(const Vector<T, N>& x) {
+    return *std::min_element(std::begin(x), std::end(x));
+}
+
+template<typename T, size_t N>
+inline auto& maxElement(const Vector<T, N>& x) {
+    return *std::max_element(std::begin(x), std::end(x));
+}
+
+template <typename T, size_t N>
+constexpr auto abs(const Vector<T, N>& x) {
+    return memberwise([](auto x) { return std::abs(x); }, x);
+}
+
+template <typename T, size_t N>
+constexpr auto saturate(const Vector<T, N>& x) {
+    return memberwise([](auto x) { return saturate(x); }, x);
+}
+
+template <typename T, typename U, size_t N>
+constexpr auto clamp(const Vector<T, N>& x, const Vector<U, N>& a, const Vector<U, N>& b) {
+    return memberwise([](auto x, auto a, auto b) { return clamp(x, a, b); }, x, a, b);
 }
 
 template<typename T>
