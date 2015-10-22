@@ -18,6 +18,11 @@ constexpr auto square(T a) {
 }
 
 template <typename T>
+constexpr auto times2(T x) {
+    return x + x;
+}
+
+template <typename T>
 constexpr auto lerp(T a, T b, T t) {
     return a + (b - a) * t;
 }

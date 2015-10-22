@@ -75,8 +75,7 @@ public:
 };
 
 TEST_CLASS(VectorUnitTests){
-public :
-
+public:
     TEST_METHOD(TestBasics) {
         const Vec4f v0{1.0f};
         Assert::IsTrue(v0.x() == 1.0f && v0.y() == 1.0f && v0.z() == 1.0f && v0.w() == 1.0f);
@@ -91,7 +90,7 @@ public :
         Assert::IsTrue(v0 < v1);
         Assert::IsFalse(v1 < v0);
         Assert::IsFalse(v0 < v0);
-        constexpr Vector<double, 4> v3{ 1.0, 2.0, 3.0, 4.0 };
+        constexpr Vector<double, 4> v3{1.0, 2.0, 3.0, 4.0};
         Assert::IsTrue(v1 == v3);
         const Vector<double, 4> v4{v1};
         Assert::IsTrue(v4 == v1);
@@ -101,9 +100,9 @@ public :
         Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
         const Vector<Vec2f, 2> v7{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
-        Assert::IsTrue(std::equal(std::begin(v7.e(0)), std::end(v7.e(1)),
-                                  stdext::make_unchecked_array_iterator(std::begin({1.0f, 2.0f,
-                                                                                    3.0f, 4.0f}))));
+        Assert::IsTrue(std::equal(
+            std::begin(v7.e(0)), std::end(v7.e(1)),
+            stdext::make_unchecked_array_iterator(std::begin({1.0f, 2.0f, 3.0f, 4.0f}))));
 
         const auto v8 = Vec3f{v6, 3.0f};
         Assert::AreEqual(v8, Vec3f{1.0f, 2.0f, 3.0f});
@@ -125,11 +124,11 @@ public :
     }
 
     TEST_METHOD(TestAdd) {
-        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
-        constexpr Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
+        constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr Vec4f v1{2.0f, 4.0f, 6.0f, 8.0f};
         constexpr auto v2 = v0 + v1;
-        Assert::AreEqual(Vec4f{ 3.0f, 6.0f, 9.0f, 12.0f }, v2);
-        constexpr Vector<double, 4> v3{ 2.0, 4.0, 6.0, 8.0 };
+        Assert::AreEqual(Vec4f{3.0f, 6.0f, 9.0f, 12.0f}, v2);
+        constexpr Vector<double, 4> v3{2.0, 4.0, 6.0, 8.0};
         constexpr auto v4 = v0 + v3;
         Assert::AreEqual(v4, Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
 
@@ -137,7 +136,7 @@ public :
         v5 += v1;
         Assert::AreEqual(v5, v2);
 
-        const auto v6 = Vector<Vec2f, 2>{ Vec2f{ 1.0f, 2.0f }, Vec2f{ 3.0f, 4.0f } };
+        const auto v6 = Vector<Vec2f, 2>{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
         auto v7 = v6;
         v7 += v6;
         Assert::AreEqual(v7, v6 * 2.0f);
@@ -150,7 +149,7 @@ public :
         Assert::AreEqual(v2, Vec4f{1.0f, 2.0f, 3.0f, 4.0f});
         const Vector<double, 4> v3{v0};
         Assert::IsTrue(v3 == v0);
-        constexpr Vector<double, 4> v4{ 2.0, 4.0, 6.0, 8.0 };
+        constexpr Vector<double, 4> v4{2.0, 4.0, 6.0, 8.0};
         constexpr auto v5 = v4 - v1;
         static_assert(std::is_same<decltype(v5), const Vector<double, 4>>::value, "");
         static_assert(v5 == v2, "");
@@ -161,23 +160,23 @@ public :
     }
 
     TEST_METHOD(TestScalarMultiply) {
-        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
-        constexpr auto v1 = v0 * 2.0f;
-        constexpr auto v2 = 2.0f * v0;
+        constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto v1 = v0 * 2.0f;
+        const auto v2 = 2.0f * v0;
         constexpr auto v3 = v0 * 2.0;
         static_assert(std::is_same<decltype(v3), const Vector<double, 4>>::value, "");
         Assert::AreEqual(v1, v2);
-        Assert::AreEqual(v1, Vec4f{ 2.0f, 4.0f, 6.0f, 8.0f });
+        Assert::AreEqual(v1, Vec4f{2.0f, 4.0f, 6.0f, 8.0f});
         Assert::AreEqual(v3, Vector<double, 4>{2.0, 4.0, 6.0, 8.0});
         Assert::IsTrue(v1 == v3);
     }
 
     TEST_METHOD(TestDot) {
-        constexpr Vec4f v0{ 1.0f, 2.0f, 3.0f, 4.0f };
-        constexpr Vec4f v1{ 2.0f, 4.0f, 6.0f, 8.0f };
+        constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr Vec4f v1{2.0f, 4.0f, 6.0f, 8.0f};
         constexpr auto s0 = dot(v0, v1);
         Assert::AreEqual(s0, 1.0f * 2.0f + 2.0f * 4.0f + 3.0f * 6.0f + 4.0f * 8.0f);
-        constexpr Vector<double, 4> v3{ 2.0, 4.0, 6.0, 8.0 };
+        constexpr Vector<double, 4> v3{2.0, 4.0, 6.0, 8.0};
         constexpr auto s1 = dot(v0, v3);
         Assert::AreEqual(s1, 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0);
         static_assert(s1 == 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0, "");
@@ -196,10 +195,10 @@ public :
     }
 
     TEST_METHOD(TestMagnitude) {
-        constexpr Vec2f v0{ 3.0f, 4.0f };
+        constexpr Vec2f v0{3.0f, 4.0f};
         const auto s0 = magnitude(v0);
         Assert::AreEqual(s0, 5.0f);
-        constexpr Vec3f v1{ 1.0f, 1.0f, 1.0f };
+        constexpr Vec3f v1{1.0f, 1.0f, 1.0f};
         const auto s1 = magnitude(v1);
         Assert::AreEqual(s1, sqrt(3.0f));
     }
@@ -226,14 +225,15 @@ public :
         v0 *= 2.0f;
         Assert::AreEqual(v0, Vec3f{2.0f, 4.0f, 6.0f});
         v0 /= 2.0f;
-        Assert::AreEqual(v0, Vec3f{ 1.0f, 2.0f, 3.0f });
+        Assert::AreEqual(v0, Vec3f{1.0f, 2.0f, 3.0f});
         Vec3i v2{2, 3, 4};
         v2 /= 2;
         Assert::IsTrue(v2.x() == 2 / 2 && v2.y() == 3 / 2 && v2.z() == 4 / 2);
     }
 
     TEST_METHOD(TestSwizzle) {
-        constexpr auto v0 = Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f };
+        static_assert(Max<5, 3, 7, 1, 3>::value == 7, "");
+        constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
         constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
         Assert::AreEqual(v0, v1);
         const auto v2 = swizzle<X>(v0);
@@ -248,25 +248,26 @@ public :
         Assert::AreEqual(v6, Vec3f{v0.x(), v0.y(), v0.z()});
         constexpr auto v7 = v0.xy();
         Assert::AreEqual(v7, Vec2f{v0.x(), v0.y()});
+        constexpr auto v8 = swizzle<X, X, Y>(Vec2f{1.0f, 2.0f});
+        Assert::AreEqual(v8, Vec3f{1.0f, 1.0f, 2.0f});
     }
 
     TEST_METHOD(TestCross) {
-        constexpr auto v0 = Vec3f{ 1.0f, 2.0f, 3.0f };
-        constexpr auto v1 = Vec3f{ 4.0f, 5.0f, 6.0f };
+        constexpr auto v0 = Vec3f{1.0f, 2.0f, 3.0f};
+        constexpr auto v1 = Vec3f{4.0f, 5.0f, 6.0f};
         constexpr auto v2 = cross(v0, v1);
-        XMVECTOR xv0{ v0.x(), v0.y(), v0.z(), 0.0f };
-        XMVECTOR xv1{ v1.x(), v1.y(), v1.z(), 0.0f };
+        XMVECTOR xv0{v0.x(), v0.y(), v0.z(), 0.0f};
+        XMVECTOR xv1{v1.x(), v1.y(), v1.z(), 0.0f};
         auto xv2 = XMVector3Cross(xv0, xv1);
         Assert::IsTrue(memcmp(&xv2, &v2, sizeof(v2)) == 0);
     }
 };
 
 TEST_CLASS(MatrixUnitTests){
-    public :
-
-    TEST_METHOD(TestMatrixBasics){
-        const auto m0 = MatrixFromRows(Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
-            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f});
+public:
+    TEST_METHOD(TestMatrixBasics) {
+        const auto m0 = MatrixFromRows(Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
+                                       Vec4f{9.0f, 10.0f, 11.0f, 12.0f});
         const auto m1 = MatrixFromColumns(Vec3f{1.0f, 5.0f, 9.0f}, Vec3f{2.0f, 6.0f, 10.0f},
                                           Vec3f{3.0f, 7.0f, 11.0f}, Vec3f{4.0f, 8.0f, 12.0f});
         Assert::AreEqual(m0, m1);
@@ -283,9 +284,8 @@ TEST_CLASS(MatrixUnitTests){
                          Mat4f{Vec4f{3.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 3.0f, 0.0f, 0.0f},
                                Vec4f{0.0f, 0.0f, 3.0f, 0.0f}, Vec4f{0.0f, 0.0f, 0.0f, 1.0f}});
 
-        const auto m4 =
-            Mat4fFromRows({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f},
-                          {9.0f, 10.0f, 11.0f, 12.0f}, {13.0f, 14.0f, 15.0f, 16.0f});
+        const auto m4 = Mat4fFromRows({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f},
+                                      {9.0f, 10.0f, 11.0f, 12.0f}, {13.0f, 14.0f, 15.0f, 16.0f});
         Assert::IsTrue(std::equal(std::begin(m4), std::end(m4),
                                   stdext::make_unchecked_array_iterator(std::begin(
                                       {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
@@ -301,8 +301,8 @@ TEST_CLASS(MatrixUnitTests){
         const auto m1 = identityMatrix<float, 4, 4>();
         const auto m2 = scaleMat4f(3.0f);
         const auto m3 = m1 + m2;
-        Assert::AreEqual(m3, Mat4f{ Vec4f{ 4.0f, 0.0f, 0.0f, 0.0f }, Vec4f{ 0.0f, 4.0f, 0.0f, 0.0f },
-            Vec4f{ 0.0f, 0.0f, 4.0f, 0.0f }, Vec4f{ 0.0f, 0.0f, 0.0f, 2.0f } });
+        Assert::AreEqual(m3, Mat4f{Vec4f{4.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 4.0f, 0.0f, 0.0f},
+                                   Vec4f{0.0f, 0.0f, 4.0f, 0.0f}, Vec4f{0.0f, 0.0f, 0.0f, 2.0f}});
 
         auto m4 = m1;
         m4 += m2;
@@ -310,15 +310,15 @@ TEST_CLASS(MatrixUnitTests){
     }
 
     TEST_METHOD(TestMatrixSubtract) {
-        const auto m0 = MatrixFromRows(Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
-            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f });
+        const auto m0 = MatrixFromRows(Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
+                                       Vec4f{9.0f, 10.0f, 11.0f, 12.0f});
         const auto m1 = 2.0f * m0;
         Assert::AreEqual(m1 - m0, m0);
     }
 
     TEST_METHOD(TestMatrixScalarMultiply) {
-        const auto m1 = Mat4fFromRows({ 1.0f, 2.0f, 3.0f, 4.0f }, { 5.0f, 6.0f, 7.0f, 8.0f },
-                                      { 9.0f, 10.0f, 11.0f, 12.0f }, { 13.0f, 14.0f, 15.0f, 16.0f });
+        const auto m1 = Mat4fFromRows({1.0f, 2.0f, 3.0f, 4.0f}, {5.0f, 6.0f, 7.0f, 8.0f},
+                                      {9.0f, 10.0f, 11.0f, 12.0f}, {13.0f, 14.0f, 15.0f, 16.0f});
         const auto m2 = m1 * 0.5f;
         Assert::AreEqual(m2, Mat4fFromRows({0.5f, 1.0f, 1.5f, 2.0f}, {2.5f, 3.0f, 3.5f, 4.0f},
                                            {4.5f, 5.0f, 5.5f, 6.0f}, {6.5f, 7.0f, 7.5f, 8.0f}));
@@ -334,21 +334,21 @@ TEST_CLASS(MatrixUnitTests){
 
     TEST_METHOD(TestMatrixColumnAccess){
         const auto m = Mat4f{Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
-                       Vec4f{9.0f, 10.0f, 11.0f, 12.0f}, Vec4f{13.0f, 14.0f, 15.0f, 16.0f}};
+                             Vec4f{9.0f, 10.0f, 11.0f, 12.0f}, Vec4f{13.0f, 14.0f, 15.0f, 16.0f}};
         const auto c0 = m.column(0);
         Assert::AreEqual(c0, Vec4f{1.0f, 5.0f, 9.0f, 13.0f});
         const auto c1 = m.column(1);
-        Assert::AreEqual(c1, Vec4f{ 2.0f, 6.0f, 10.0f, 14.0f });
+        Assert::AreEqual(c1, Vec4f{2.0f, 6.0f, 10.0f, 14.0f});
         const auto c2 = m.column(2);
-        Assert::AreEqual(c2, Vec4f{ 3.0f, 7.0f, 11.0f, 15.0f });
+        Assert::AreEqual(c2, Vec4f{3.0f, 7.0f, 11.0f, 15.0f});
         const auto c3 = m.column(3);
-        Assert::AreEqual(c3, Vec4f{ 4.0f, 8.0f, 12.0f, 16.0f });
+        Assert::AreEqual(c3, Vec4f{4.0f, 8.0f, 12.0f, 16.0f});
     }
 
     TEST_METHOD(TestVectorMatrixMultiply) {
-        const auto m0 = Mat4f{ Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
-            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f }, Vec4f{ 13.0f, 14.0f, 15.0f, 16.0f } };
-        const auto v0 = Vec4f{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const auto m0 = Mat4f{Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
+                              Vec4f{9.0f, 10.0f, 11.0f, 12.0f}, Vec4f{13.0f, 14.0f, 15.0f, 16.0f}};
+        const auto v0 = Vec4f{1.0f, 1.0f, 1.0f, 1.0f};
         const auto v1 = v0 * m0;
 
         auto xmv0 = XMVECTOR{};
@@ -360,10 +360,10 @@ TEST_CLASS(MatrixUnitTests){
     }
 
     TEST_METHOD(TestMatrixMatrixMultiply) {
-        const auto m0 = Mat4f{ Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f }, Vec4f{ 5.0f, 6.0f, 7.0f, 8.0f },
-            Vec4f{ 9.0f, 10.0f, 11.0f, 12.0f }, Vec4f{ 13.0f, 14.0f, 15.0f, 16.0f } };
-        const auto m1 = Mat4f{ Vec4f{ 21.0f, 22.0f, 23.0f, 24.0f }, Vec4f{ 25.0f, 26.0f, 27.0f, 28.0f },
-            Vec4f{ 29.0f, 30.0f, 31.0f, 32.0f }, Vec4f{ 33.0f, 34.0f, 35.0f, 36.0f } };
+        const auto m0 = Mat4f{Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
+                              Vec4f{9.0f, 10.0f, 11.0f, 12.0f}, Vec4f{13.0f, 14.0f, 15.0f, 16.0f}};
+        const auto m1 = Mat4f{Vec4f{21.0f, 22.0f, 23.0f, 24.0f}, Vec4f{25.0f, 26.0f, 27.0f, 28.0f},
+                              Vec4f{29.0f, 30.0f, 31.0f, 32.0f}, Vec4f{33.0f, 34.0f, 35.0f, 36.0f}};
         const auto m2 = m0 * m1;
         auto xmm0 = XMMATRIX{};
         memcpy(&xmm0, &m0, sizeof(xmm0));

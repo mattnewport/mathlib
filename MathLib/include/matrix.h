@@ -184,13 +184,13 @@ constexpr auto identityMatrix() {
 }
 
 inline auto scaleMat4f(float s) {
-    return Mat4f{Vec4f{s, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, s, 0.0f, 0.0f}, Vec4f{0.0f, 0.0f, s, 0.0f},
-                 Vec4f{0.0f, 0.0f, 0.0f, 1.0f}};
+    return Mat4f{basisVector<float, 4>(0) * s, basisVector<float, 4>(1) * s,
+                 basisVector<float, 4>(2) * s, basisVector<float, 4>(3)};
 }
 
 inline auto translationMat4f(const Vec3f& t) {
-    return Mat4f{Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
-                 Vec4f{0.0f, 0.0f, 1.0f, 0.0f}, Vec4f{t.x(), t.y(), t.z(), 1.0f}};
+    return Mat4f{basisVector<float, 4>(0), basisVector<float, 4>(1), basisVector<float, 4>(2),
+                 Vec4f{t, 1.0f}};
 }
 
 inline auto rotationYMat4f(float angle) {
@@ -205,19 +205,19 @@ inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
 
 template <typename T>
 inline Matrix<T, 4, 4> Mat4FromQuat(const Quaternion<T>& q) {
-    using Vec = Vector<T, 4>;
-    const auto _2x2 = T{2} * square(q.x());
-    const auto _2y2 = T{2} * square(q.y());
-    const auto _2z2 = T{2} * square(q.z());
-    const auto _2xy = T{2} * q.x() * q.y();
-    const auto _2zw = T{2} * q.z() * q.w();
-    const auto _2xz = T{2} * q.x() * q.z();
-    const auto _2yw = T{2} * q.y() * q.w();
-    const auto _2yz = T{2} * q.y() * q.z();
-    const auto _2xw = T{2} * q.x() * q.w();
-    return {Vec{T{1} - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, T{0}},
-            Vec{_2xy - _2zw, T{1} - _2x2 - _2z2, _2yz + _2xw, T{0}},
-            Vec{_2xz + _2yw, _2yz - _2xw, T{1} - _2x2 - _2y2, T{0}}, Vec{T{0}, T{0}, T{0}, T{1}}};
+    using RowVec = Vector<T, 4>;
+    const auto _2x2 = times2(square(q.x()));
+    const auto _2y2 = times2(square(q.y()));
+    const auto _2z2 = times2(square(q.z()));
+    const auto _2xy = times2(q.x() * q.y());
+    const auto _2xz = times2(q.x() * q.z());
+    const auto _2xw = times2(q.x() * q.w());
+    const auto _2yz = times2(q.y() * q.z());
+    const auto _2yw = times2(q.y() * q.w());
+    const auto _2zw = times2(q.z() * q.w());
+    return {RowVec{T(1) - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, T(0)},
+            RowVec{_2xy - _2zw, T(1) - _2x2 - _2z2, _2yz + _2xw, T(0)},
+            RowVec{_2xz + _2yw, _2yz - _2xw, T(1) - _2x2 - _2y2, T(0)}, basisVector<T, 4>(3)};
 }
 
 }  // namespace mathlib

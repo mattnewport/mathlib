@@ -276,6 +276,9 @@ constexpr auto asTuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
     return std::make_tuple(a[Is]...);
 }
 
+template <size_t I, size_t J>
+struct MaxImpl : public std::integral_constant<size_t, (J > I ? J : I)> {};
+
 }  // namespace detail
 
 // Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
@@ -286,11 +289,20 @@ constexpr auto asTuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
 // e.g. result of swizzle<X>(Vec4f) is a float not a Vector<float, 1>
 enum SwizzleConstants { X = 0, Y = 1, Z = 2, W = 3 };
 
+template <size_t... Is>
+struct Max;
+
+template <size_t I>
+struct Max<I> : public std::integral_constant<size_t, I> {};
+
+template <size_t I, size_t... Is>
+struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
+
 template <size_t... Is, typename V>
 constexpr auto swizzle(const V& x) {
     static_assert(IsVector<V>::value, "Argument to swizzle() must be a Vector.");
-    static_assert(VectorDimension<V>::value >= sizeof...(Is),
-                  "Number of swizzle args must be <= Vector dimension.");
+    static_assert(VectorDimension<V>::value > Max<Is...>::value,
+                  "All swizzle args must be <= Vector dimension.");
     using T = VectorElementType_t<V>;
     using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
     return ReturnType{x[Is]...};
