@@ -5,22 +5,19 @@
 namespace mathlib {
 
 template <typename T>
-class Quaternion {
+class Quaternion : private Vector<T, 4> {
 public:
-    Quaternion() = default;
-    Quaternion(const Quaternion&) = default;
-    Quaternion(const Vector<T, 3>& qv, T qs) : qv_{ qv }, qs_{ qs } {}
+    using Vector::Vector;
 
-    const Vector<T, 3>& qv() const { return qv_; }
-    T qs() const { return qs_; }
-    auto x() const { return qv_.x(); }
-    auto y() const { return qv_.y(); }
-    auto z() const { return qv_.z(); }
-    auto w() const { return qs_; }
+    const Vector<T, 3>& qv() const { return vec().xyz(); }
+    T qs() const { return vec().w(); }
+    auto x() const { return vec().x(); }
+    auto y() const { return vec().y(); }
+    auto z() const { return vec().z(); }
+    auto w() const { return vec().w(); }
 
 private:
-    Vector<T, 3> qv_;
-    T qs_;
+    constexpr auto vec() const { return static_cast<const Vector<T, 4>&>(*this); }
 };
 
 using Quatf = Quaternion<float>;

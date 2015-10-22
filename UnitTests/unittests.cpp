@@ -395,7 +395,7 @@ TEST_CLASS(MatrixUnitTests){
 
 TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionBasics) {
-        Quatf q0{ {1.0f, 2.0f, 3.0f}, 4.0f };
+        Quatf q0{ Vec3f{1.0f, 2.0f, 3.0f}, 4.0f };
         Quatf q1{ q0 };
         Assert::IsTrue(q0.x() == 1.0f && q0.y() == 2.0f && q0.z() == 3.0f && q0.w() == 4.0f);
     }
