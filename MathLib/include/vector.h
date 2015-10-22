@@ -31,26 +31,28 @@ using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_
 template <typename T, size_t N>
 class Vector {
 public:
+    using is = decltype(std::make_index_sequence<N>{});
+
     constexpr Vector() = default;
     constexpr Vector(const Vector&) = default;
 
-    // Standard constructor taking a sequence of exactly N objects convertible to T (no narrowing
-    // conversions).
-    template <typename U, typename V, typename... Us,
-              typename = std::enable_if_t<(sizeof...(Us) == N - 2)>>
-    constexpr Vector(U&& u, V&& v, Us&&... us) : e_{u, v, us...} {}
-
+    // Standard constructor taking a sequence of exactly N objects convertible to T.
+    // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
+    template <typename... Us, typename = std::enable_if_t<(sizeof...(Us) == N - 2)>>
+    constexpr Vector(const T& x, const T& y, Us&&... us) : e_{x, y, T(us)...} {}
 
     // MNTODO: can't make these constructors constexpr due to a bug in VS2015:
     // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
     
     // For convenience we have an explicit constructor taking a single argument that sets all
     // members of the vector to the value of that argument.
-    explicit Vector(const T& x) : Vector{x, std::make_index_sequence<N>{}} {}
+    explicit Vector(const T& x) : Vector{x, is{}} {}
     // Templated conversion constructor from a Vector<U, N>
+    // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <typename U>
-    Vector(const Vector<U, N>& x) : Vector{x, std::make_index_sequence<N>{}} {}
+    Vector(const Vector<U, N>& x) : Vector{x, is{}} {}
     // Templated conversion constructor from a Vector<U, N-1> and a scalar V
+    // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <typename U, typename V>
     explicit Vector(const Vector<U, N - 1>& x, V&& s)
         : Vector{x, std::forward<V>(s), std::make_index_sequence<N - 1>{}} {}
@@ -106,22 +108,22 @@ public:
 
     template <typename U>
     Vector& operator+=(const Vector<U, N>& x) {
-        return plusEquals(x, std::make_index_sequence<N>{});
+        return plusEquals(x, is{});
     }
 
     template <typename U>
     Vector& operator-=(const Vector<U, N>& x) {
-        return minusEquals(x, std::make_index_sequence<N>{});
+        return minusEquals(x, is{});
     }
 
     template <typename U>
     Vector& operator*=(U x) {
-        return multiplyEquals(x, std::make_index_sequence<N>{});
+        return multiplyEquals(x, is{});
     }
 
     template <typename U>
     Vector& operator/=(U x) {
-        return divideEquals(x, std::make_index_sequence<N>{}, tag<U>{});
+        return divideEquals(x, is{}, tag<U>{});
     }
 
 private:
@@ -136,11 +138,11 @@ private:
     explicit constexpr Vector(const T& x, std::index_sequence<Is...>) : e_{((void)Is, x)...} {}
     // From a Vector<U, N> where U is convertible to T
     template <typename U, size_t... Is>
-    constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) : e_{x.e_[Is]...} {}
+    constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) : e_{T(x.e_[Is])...} {}
     // From a Vector<U, N-1> and a scalar V where U and V are convertible to T
     template <typename U, typename V, size_t... Is>
     explicit constexpr Vector(const Vector<U, N - 1>& x, V s, std::index_sequence<Is...>)
-        : e_{x.e_[Is]..., s} {}
+        : e_{T(x.e_[Is])..., T(s)} {}
 
     template <typename... Ts>
     static constexpr void eval(Ts&&...) {}
@@ -211,6 +213,7 @@ using VectorElementType_t = typename VectorElementType<T>::type;
 
 // Implementation helpers for operators and free functions, not part of public API
 namespace detail {
+
 template <size_t I, typename F, typename... Us>
 constexpr auto memberApply(F&& f, Us&&... us) {
     return f(us.e(I)...);
@@ -220,15 +223,13 @@ constexpr auto memberApply(F&& f, Us&&... us) {
 template <typename F, size_t... Is, typename... Us>
 constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
     using T = decltype(memberApply<0>(f, us...));
-    using N = VectorDimension<std::common_type_t<Us...>>;
-    return Vector<T, N::value>{memberApply<Is>(f, std::forward<Us>(us)...)...};
+    return Vector<T, sizeof...(Is)>{memberApply<Is>(f, std::forward<Us>(us)...)...};
 }
 
 template <typename F, size_t... Is, typename T, typename U>
 constexpr auto memberwiseScalarImpl(F f, std::index_sequence<Is...>,
                                     const Vector<T, sizeof...(Is)>& x, U y) {
-    using resvec = Vector<decltype(f(x.e(0), y)), sizeof...(Is)>;
-    return resvec{f(x.e(Is), y)...};
+    return Vector<decltype(f(x.e(0), y)), sizeof...(Is)>{f(x.e(Is), y)...};
 }
 
 // MNTODO: replace this fold machinery with C++17 fold expressions once available
@@ -262,13 +263,25 @@ template <typename T, typename U, size_t N>
 constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
     return memberwiseScalar(std::divides<>{}, a, s);
 }
+
 template <typename T, typename U, size_t N>
 constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
-    return a * (T{ 1 } / s);
+    return a * (T{1} / s);
 }
 
-} // namespace detail
+template <typename T, size_t N, size_t... Is>
+constexpr auto asTuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
+    return std::make_tuple(a.e(Is)...);
+}
 
+}  // namespace detail
+
+// Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
+// determines the swizzle pattern. Output Vector dimension is determined by the number of swizzle
+// constants,
+// e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f
+// Special case for a single swizzle constant: return value is scalar T rather than Vector<T, 1>,
+// e.g. result of swizzle<X>(Vec4f) is a float not a Vector<float, 1>
 enum SwizzleConstants { X = 0, Y = 1, Z = 2, W = 3 };
 
 template <size_t... Is, typename V>
@@ -281,11 +294,15 @@ constexpr auto swizzle(const V& x) {
     return ReturnType{x.e(Is)...};
 }
 
+// Returns a vector of all zeros
+// e.g. zeroVector<float, 3>() == Vec3f{0.0f, 0.0f, 0.0f}
 template <typename T, size_t N>
 constexpr auto zeroVector() {
     return Vector<T, N>{T(0)};
 }
 
+// Returns a basis vector with 1 in the specified position and 0 elsewhere,
+// e.g. basisVector<float, 3>(2) == Vec3f{0.0f, 1.0f, 0.0f}
 template <typename T, size_t N>
 constexpr auto basisVector(size_t i) {
     return detail::basisVectorImpl<T, N>(i, std::make_index_sequence<N>{});
@@ -293,43 +310,39 @@ constexpr auto basisVector(size_t i) {
 
 // Takes a function f that takes one or more arguments of type Vector<_, N> and calls it memberwise
 // on elements of the arguments, returning the memberwise result.
-// For example: memberwise(op+, Vec3f x, Vec3f y) returns Vec3f{x.x + y.x, x.y + y.y, x.z + y.z}
+// e.g. memberwise(op+, Vec3f x, Vec3f y) == Vec3f{x.x + y.x, x.y + y.y, x.z + y.z}
 template <typename F, typename... Us>
 constexpr auto memberwise(F&& f, Us&&... us) {
-    using VecType = std::common_type_t<Us...>;
-    static_assert(IsVector<VecType>::value,
-                  "memberwise() should be called with Us that are all Vectors.");
-    using N = VectorDimension<VecType>;
-    return detail::memberwiseImpl(std::forward<F>(f), std::make_index_sequence<N::value>{},
-                                  std::forward<Us>(us)...);
+    using Vector = std::common_type_t<Us...>;
+    static_assert(IsVector<Vector>::value, "memberwise(f, us...): us... should all be Vectors.");
+    return detail::memberwiseImpl(std::forward<F>(f), Vector::is(), std::forward<Us>(us)...);
 }
 
 // Apply a function F(T, U) to elements of Vector x and scalar y and return a Vector of the results
-// For example: memberwiseScalar(op*, Vex3f x, float y) returns Vec3f{x.x*y, x.y*y, x.z*y}
+// e.g. memberwiseScalar(op*, Vex3f x, float y) == Vec3f{x.x*y, x.y*y, x.z*y}
 template <typename F, typename T, typename U, size_t N>
 constexpr auto memberwiseScalar(F&& f, const Vector<T, N>& x, U y) {
-    return detail::memberwiseScalarImpl(std::forward<F>(f), std::make_index_sequence<N>{}, x, y);
+    return detail::memberwiseScalarImpl(std::forward<F>(f), Vector<T, N>::is{}, x, y);
 }
 
 // Fold a function F(T, T) over elements of Vector v.
-// For example: fold(op+, Vec3f x) returns (x.x + x.y + x.z)
+// e.g. fold(op+, Vec3f x) == float{x.x + x.y + x.z}
 template <typename F, typename T, size_t N>
 constexpr auto fold(F f, const Vector<T, N>& v) {
-    return detail::fold(f, v, std::make_index_sequence<N>{});
+    return detail::fold(f, v, Vector<T, N>::is{});
 }
 
-// Make a tuple of the elements of Vector a, a helper for implementing operators but also
-// potentially useful on its own.
-template <typename T, size_t N, size_t... Is>
-constexpr auto make_tuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
-    return std::make_tuple(a.e(Is)...);
+// Returns a tuple of the elements of Vector a, used to implement operators but also potentially
+// useful on its own.
+template <typename T, size_t N>
+constexpr auto asTuple(const Vector<T, N>& a) {
+    return detail::asTuple(a, Vector<T, N>::is{});
 }
 
 // standard operators and vector specific functions (dot() etc.)
 template <typename T, typename U, size_t N>
 constexpr bool operator==(const Vector<T, N>& a, const Vector<U, N>& b) {
-    return make_tuple(a, std::make_index_sequence<N>{}) ==
-           make_tuple(b, std::make_index_sequence<N>{});
+    return asTuple(a) == asTuple(b);
 }
 
 template <typename T, typename U, size_t N>
@@ -339,8 +352,7 @@ constexpr bool operator!=(const Vector<T, N>& a, const Vector<U, N>& b) {
 
 template <typename T, typename U, size_t N>
 constexpr bool operator<(const Vector<T, N>& a, const Vector<U, N>& b) {
-    return make_tuple(a, std::make_index_sequence<N>{}) <
-           make_tuple(b, std::make_index_sequence<N>{});
+    return asTuple(a) < asTuple(b);
 }
 
 template <typename T, typename U, size_t N>

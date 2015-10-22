@@ -115,6 +115,11 @@ public :
 
         constexpr auto& v9 = v1;
         constexpr auto v10{v9};
+
+        const auto v11 = Vec3f{1};
+        const auto v12 = Vec3f{1, 2, 3};
+        const auto v13 = Vec3i{1, 2, 3};
+        Vec3f v14 = v13;
     }
 
     TEST_METHOD(TestAdd) {
