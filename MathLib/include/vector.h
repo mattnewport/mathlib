@@ -221,7 +221,7 @@ constexpr auto memberApply(F&& f, Us&&... us) {
     return f(us[I]...);
 }
 
-// Implementation helpers for memberwise and memberwiseScalar
+// Implementation helpers for memberwise and memberwiseBoundArg
 template <typename F, size_t... Is, typename... Us>
 constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
     using T = decltype(memberApply<0>(f, us...));
@@ -229,7 +229,7 @@ constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
 }
 
 template <typename F, size_t... Is, typename T, typename U>
-constexpr auto memberwiseScalarImpl(F f, std::index_sequence<Is...>,
+constexpr auto memberwiseBoundArgImpl(F f, std::index_sequence<Is...>,
                                     const Vector<T, sizeof...(Is)>& x, U&& y) {
     return Vector<decltype(f(x[0], y)), sizeof...(Is)>{f(x[Is], y)...};
 }
@@ -263,7 +263,7 @@ constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) {
 
 template <typename T, typename U, size_t N>
 constexpr auto divide(const Vector<T, N>& a, U s, integral_tag) {
-    return memberwiseScalar(std::divides<>{}, a, s);
+    return memberwiseBoundArg(std::divides<>{}, a, s);
 }
 
 template <typename T, typename U, size_t N>
@@ -332,12 +332,14 @@ constexpr auto memberwise(F&& f, Us&&... us) {
     return detail::memberwiseImpl(std::forward<F>(f), Vector::is(), std::forward<Us>(us)...);
 }
 
-// Apply a function F(T, U) to elements of Vector x and scalar y and return a Vector of the results
-// e.g. memberwiseScalar(op*, Vex3f x, float y) == Vec3f{x.x*y, x.y*y, x.z*y}
+// Apply a function F(T, U) memberwise to elements of Vector x with fixed bound arg U y and return a
+// Vector of the results. This could be implemented in terms of memberwise with a lambda or
+// std::bind but can't use std::bind or lambdas in a constexpr function.
+// e.g. memberwiseBoundArg(op*, Vex3f x, float y) == Vec3f{x.x*y, x.y*y, x.z*y}
 template <typename F, typename T, typename U, size_t N>
-constexpr auto memberwiseScalar(F&& f, const Vector<T, N>& x, U&& y) {
-    return detail::memberwiseScalarImpl(std::forward<F>(f), Vector<T, N>::is{}, x,
-                                        std::forward<U>(y));
+constexpr auto memberwiseBoundArg(F&& f, const Vector<T, N>& x, U&& y) {
+    return detail::memberwiseBoundArgImpl(std::forward<F>(f), Vector<T, N>::is{}, x,
+                                          std::forward<U>(y));
 }
 
 // Fold a function F(T, T) over elements of Vector v.
@@ -382,7 +384,7 @@ constexpr auto operator-(const Vector<T, N>& a, const Vector<U, N>& b) {
 
 template <typename T, typename U, size_t N>
 constexpr auto operator*(const Vector<T, N>& a, U s) {
-    return memberwiseScalar(std::multiplies<>{}, a, s);
+    return memberwiseBoundArg(std::multiplies<>{}, a, s);
 }
 
 template <typename T, typename U, size_t N>

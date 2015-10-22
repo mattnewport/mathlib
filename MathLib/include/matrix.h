@@ -147,7 +147,11 @@ constexpr auto operator*(const Vector<T, M>& v, const Matrix<T, M, N>& m) {
 
 template <typename T, typename U, size_t M, size_t N, size_t P>
 inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) {
-    return memberwiseScalar(std::multiplies<>{}, a.rows(), b);
+    // should be able to do this but it causes an ICE in VS2015 :(
+    // return memberwiseBoundArg(std::multiplies<>{}, a.rows(), b);
+    Matrix<std::common_type_t<T, U>, M, P> res;
+    for (auto r = 0; r < M; ++r) res[r] = a[r] * b;
+    return res;
 }
 
 inline auto toXMVector(const Vec4f& v) {
