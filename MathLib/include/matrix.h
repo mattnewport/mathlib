@@ -85,6 +85,13 @@ constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
 
 using Mat4f = Matrix<float, 4, 4>;
 
+template <typename T, size_t M, size_t N>
+inline auto MatrixFromDataPointer(const T* p) {
+    Matrix<T, M, N> res;
+    std::memcpy(&res, p, sizeof(res));
+    return res;
+}
+
 template <typename... Us>
 constexpr auto MatrixFromRows(Us&&... us) {
     using RowVectorType = std::common_type_t<std::remove_reference_t<Us>...>;
@@ -171,9 +178,7 @@ inline auto toXMVector(const Vec4f& v) {
 }
 
 inline auto toMat4f(const DirectX::XMMATRIX& m) {
-    auto res = Mat4f{};
-    memcpy(&res, &m, sizeof(res));
-    return res;
+    return MatrixFromDataPointer<float, 4, 4>(&m.r[0].m128_f32[0]);
 }
 
 template <typename T, size_t M, size_t N>
@@ -192,23 +197,21 @@ constexpr auto identityMatrix() {
 }
 
 inline auto scaleMat4f(float s) {
-    return Mat4f{basisVector<float, 4>(0) * s, basisVector<float, 4>(1) * s,
-                 basisVector<float, 4>(2) * s, basisVector<float, 4>(3)};
+    return Mat4f{basisVector<Vec4f>(0) * s, basisVector<Vec4f>(1) * s, basisVector<Vec4f>(2) * s,
+                 basisVector<Vec4f>(3)};
 }
 
 inline auto translationMat4f(const Vec3f& t) {
-    return Mat4f{basisVector<float, 4>(0), basisVector<float, 4>(1), basisVector<float, 4>(2),
+    return Mat4f{basisVector<Vec4f>(0), basisVector<Vec4f>(1), basisVector<Vec4f>(2),
                  Vec4f{t, 1.0f}};
 }
 
 inline auto rotationYMat4f(float angle) {
-    auto xmm = DirectX::XMMatrixRotationY(angle);
-    return toMat4f(xmm);
+    return toMat4f(DirectX::XMMatrixRotationY(angle));
 }
 
 inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
-    auto xmm = DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up));
-    return toMat4f(xmm);
+    return toMat4f(DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up)));
 }
 
 template <typename T>

@@ -57,6 +57,9 @@ public:
     explicit Vector(const Vector<U, N - 1>& x, V&& s)
         : Vector{x, std::forward<V>(s), std::make_index_sequence<N - 1>{}} {}
 
+    // Construct from a pointer to N Ts
+    explicit Vector(const T* p) : Vector{p, is{}} {}
+
     // Generic element access
     T& operator[](size_t i) { return e_[i]; }
     constexpr const T& operator[](size_t i) const { return e_[i]; }
@@ -94,6 +97,7 @@ public:
 
     // Common swizzles
     constexpr auto xy() const { return swizzle<X, Y>(*this); }
+    constexpr auto xz() const { return swizzle<X, Z>(*this); }
     constexpr auto xyz() const { return swizzle<X, Y, Z>(*this); }
     constexpr auto yzx() const { return swizzle<Y, Z, X>(*this); }
     constexpr auto zxy() const { return swizzle<Z, X, Y>(*this); }
@@ -106,6 +110,7 @@ public:
     auto end() const { return std::end(e_); }
 
     // Return a pointer to the raw underlying contiguous element data.
+    T* data() { return e_; }
     const T* data() const { return e_; }
 
     template <typename U>
@@ -145,6 +150,9 @@ private:
     template <typename U, typename V, size_t... Is>
     explicit constexpr Vector(const Vector<U, N - 1>& x, V s, std::index_sequence<Is...>)
         : e_{T(x.e_[Is])..., T(s)} {}
+    // From a const T* of N contiguous elements
+    template <size_t... Is>
+    explicit Vector(const T* ts, std::index_sequence<Is...>) : e_{ts[Is]...} {}
 
     template <typename... Ts>
     static constexpr void eval(Ts&&...) {}
@@ -320,6 +328,11 @@ constexpr auto zeroVector() {
 template <typename T, size_t N>
 constexpr auto basisVector(size_t i) {
     return detail::basisVectorImpl<T, N>(i, std::make_index_sequence<N>{});
+}
+
+template<typename V>
+constexpr auto basisVector(size_t i) {
+    return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
 }
 
 // Takes a function f that takes one or more arguments of type Vector<_, N> and calls it memberwise

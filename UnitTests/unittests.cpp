@@ -122,6 +122,19 @@ public:
 
         Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
         Assert::IsTrue(-v14 + +v14 == zeroVector<float, 3>());
+
+        auto pv = new(&v14) Vec3f;
+        Assert::AreEqual(*pv, v12);
+        pv = new(&v14) Vec3f{};
+        Assert::AreEqual(*pv, zeroVector<float, 3>());
+
+        auto v15 = basisVector<float, 3>(Y);
+        Assert::AreEqual(v15, Vec3f{0, 1, 0});
+        auto v16 = basisVector<Vec3f>(Y);
+        Assert::AreEqual(v16, v15);
+
+        const auto v17 = Vec3f{v1.data()};
+        Assert::AreEqual(v17, v1.xyz());
     }
 
     TEST_METHOD(TestAdd) {
@@ -249,6 +262,7 @@ public:
         Assert::AreEqual(v6, Vec3f{v0.x(), v0.y(), v0.z()});
         constexpr auto v7 = v0.xy();
         Assert::AreEqual(v7, Vec2f{v0.x(), v0.y()});
+        Assert::AreEqual(v0.xz(), Vec2f{v0.x(), v0.z()});
         constexpr auto v8 = swizzle<X, X, Y>(Vec2f{1.0f, 2.0f});
         Assert::AreEqual(v8, Vec3f{1.0f, 1.0f, 2.0f});
     }
@@ -359,6 +373,7 @@ public:
         memcpy(&xmm, &m0, sizeof(xmm));
         auto xmv1 = XMVector4Transform(xmv0, xmm);
         Assert::IsTrue(memcmp(&v1, &xmv1, sizeof(v1)) == 0);
+        Assert::AreEqual(v1, Vec4f{&xmv1.m128_f32[0]});
     }
 
     TEST_METHOD(TestMatrixMatrixMultiply) {
@@ -373,6 +388,7 @@ public:
         memcpy(&xmm1, &m1, sizeof(xmm1));
         auto xmm2 = XMMatrixMultiply(xmm0, xmm1);
         Assert::IsTrue(memcmp(&m2, &xmm2, sizeof(m2)) == 0);
+        Assert::AreEqual(m2, toMat4f(xmm2));
     }
 
     TEST_METHOD(TestMatrix4fRotationY) {
