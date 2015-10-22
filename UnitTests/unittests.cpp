@@ -120,6 +120,8 @@ public :
         const auto v12 = Vec3f{1, 2, 3};
         const auto v13 = Vec3i{1, 2, 3};
         Vec3f v14 = v13;
+
+        Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
     }
 
     TEST_METHOD(TestAdd) {
@@ -268,6 +270,8 @@ TEST_CLASS(MatrixUnitTests){
         const auto m1 = MatrixFromColumns(Vec3f{1.0f, 5.0f, 9.0f}, Vec3f{2.0f, 6.0f, 10.0f},
                                           Vec3f{3.0f, 7.0f, 11.0f}, Vec3f{4.0f, 8.0f, 12.0f});
         Assert::AreEqual(m0, m1);
+        Assert::IsTrue(m0.e(0, 0) == m0[0][0] && m0[0][0] == 1.0f);
+        Assert::IsTrue(m0.e(1, 2) == m0[1][2] && m0[1][2] == 7.0f);
 
         const auto m2 = identityMatrix<float, 3, 4>();
         const auto m3 = MatrixFromRows(Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},

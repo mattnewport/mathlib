@@ -20,9 +20,11 @@ public:
     using Vector::Vector;
 
     // Row and column access
-    Vector<T, N>& row(size_t n) { return Vector::e(n); }
-    const Vector<T, N>& row(size_t n) const { return Vector::e(n); }
-    constexpr auto column(size_t n) const { return columnHelper(n, std::make_index_sequence<M>{}); }
+    Vector<T, N>& operator[](size_t i) { return Vector::e(i); }
+    const Vector<T, N>& operator[](size_t i) const { return Vector::e(i); }
+    Vector<T, N>& row(size_t i) { return Vector::e(i); }
+    const Vector<T, N>& row(size_t i) const { return Vector::e(i); }
+    constexpr auto column(size_t i) const { return columnHelper(i, Vector::is{}); }
 
     // Element access
     T& e(size_t r, size_t c) { return Vector::e(r).e(c); }
@@ -148,7 +150,7 @@ inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) {
     Matrix<std::common_type_t<T, U>, M, P> res;
     for (auto c = 0; c < N; ++c) {
         for (auto r = 0; r < M; ++r) {
-            res.e(r, c) = dot(a.row(r), b.column(c));
+            res[r][c] = dot(a.row(r), b.column(c));
         }
     }
     return res;

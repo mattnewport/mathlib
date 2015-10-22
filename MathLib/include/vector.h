@@ -58,6 +58,8 @@ public:
         : Vector{x, std::forward<V>(s), std::make_index_sequence<N - 1>{}} {}
 
     // Generic element access
+    T& operator[](size_t i) { return e_[i]; }
+    constexpr const T& operator[](size_t i) const { return e_[i]; }
     T& e(size_t i) { return e_[i]; }
     constexpr const T& e(size_t i) const { return e_[i]; }
 
@@ -216,7 +218,7 @@ namespace detail {
 
 template <size_t I, typename F, typename... Us>
 constexpr auto memberApply(F&& f, Us&&... us) {
-    return f(us.e(I)...);
+    return f(us[I]...);
 }
 
 // Implementation helpers for memberwise and memberwiseScalar
@@ -229,7 +231,7 @@ constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
 template <typename F, size_t... Is, typename T, typename U>
 constexpr auto memberwiseScalarImpl(F f, std::index_sequence<Is...>,
                                     const Vector<T, sizeof...(Is)>& x, U y) {
-    return Vector<decltype(f(x.e(0), y)), sizeof...(Is)>{f(x.e(Is), y)...};
+    return Vector<decltype(f(x[0], y)), sizeof...(Is)>{f(x[Is], y)...};
 }
 
 // MNTODO: replace this fold machinery with C++17 fold expressions once available
@@ -251,7 +253,7 @@ constexpr auto foldImpl(F f, T x, T y, Ts... ts) {
 
 template <typename F, typename T, size_t N, size_t... Is>
 constexpr auto fold(F f, const Vector<T, N>& v, std::index_sequence<Is...>) {
-    return foldImpl(f, v.e(Is)...);
+    return foldImpl(f, v[Is]...);
 }
 
 template <typename T, size_t N, size_t... Js>
@@ -271,7 +273,7 @@ constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
 
 template <typename T, size_t N, size_t... Is>
 constexpr auto asTuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
-    return std::make_tuple(a.e(Is)...);
+    return std::make_tuple(a[Is]...);
 }
 
 }  // namespace detail
@@ -291,7 +293,7 @@ constexpr auto swizzle(const V& x) {
                   "Number of swizzle args must be <= Vector dimension.");
     using T = VectorElementType_t<V>;
     using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
-    return ReturnType{x.e(Is)...};
+    return ReturnType{x[Is]...};
 }
 
 // Returns a vector of all zeros
