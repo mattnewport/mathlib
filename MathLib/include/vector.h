@@ -88,6 +88,10 @@ public:
         return e_[3];
     }
 
+    // Common swizzles
+    constexpr auto xy() const { return swizzle<X, Y>(*this); }
+    constexpr auto xyz() const { return swizzle<X, Y, Z>(*this); }
+
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
     auto begin() { return std::begin(e_); }
@@ -171,6 +175,14 @@ private:
     }
 };
 
+using Vec2f = Vector<float, 2>;
+using Vec3f = Vector<float, 3>;
+using Vec4f = Vector<float, 4>;
+
+using Vec2i = Vector<int, 2>;
+using Vec3i = Vector<int, 3>;
+using Vec4i = Vector<int, 4>;
+
 // Useful type traits for working with Vectors
 template<typename T>
 struct IsVector : std::false_type {};
@@ -253,15 +265,19 @@ constexpr auto divide(const Vector<T, N>& a, U s, floating_point_tag) {
     return a * (T{ 1 } / s);
 }
 
+} // namespace detail
+
+enum SwizzleConstants { X = 0, Y = 1, Z = 2, W = 3 };
+
+template <size_t... Is, typename V>
+constexpr auto swizzle(const V& x) {
+    static_assert(IsVector<V>::value, "Argument to swizzle() must be a Vector.");
+    static_assert(VectorDimension<V>::value >= sizeof...(Is),
+                  "Number of swizzle args must be <= Vector dimension.");
+    using T = VectorElementType_t<V>;
+    using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
+    return ReturnType{x.e(Is)...};
 }
-
-using Vec2f = Vector<float, 2>;
-using Vec3f = Vector<float, 3>;
-using Vec4f = Vector<float, 4>;
-
-using Vec2i = Vector<int, 2>;
-using Vec3i = Vector<int, 3>;
-using Vec4i = Vector<int, 4>;
 
 template <typename T, size_t N>
 constexpr auto zeroVector() {

@@ -224,6 +224,24 @@ public :
         v2 /= 2;
         Assert::IsTrue(v2.x() == 2 / 2 && v2.y() == 3 / 2 && v2.z() == 4 / 2);
     }
+
+    TEST_METHOD(TestSwizzle) {
+        constexpr auto v0 = Vec4f{ 1.0f, 2.0f, 3.0f, 4.0f };
+        constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
+        Assert::AreEqual(v0, v1);
+        const auto v2 = swizzle<X>(v0);
+        Assert::AreEqual(v2, 1.0f);
+        const auto v3 = swizzle<X, X>(v0);
+        Assert::AreEqual(v3, Vec2f{1.0f});
+        const auto v4 = swizzle<Y, Z>(v0);
+        Assert::AreEqual(v4, Vec2f{v0.y(), v0.z()});
+        constexpr auto v5 = swizzle<Z, Z, X, Y>(v0);
+        Assert::AreEqual(v5, Vec4f{v0.z(), v0.z(), v0.x(), v0.y()});
+        constexpr auto v6 = v0.xyz();
+        Assert::AreEqual(v6, Vec3f{v0.x(), v0.y(), v0.z()});
+        constexpr auto v7 = v0.xy();
+        Assert::AreEqual(v7, Vec2f{v0.x(), v0.y()});
+    }
 };
 
 TEST_CLASS(MatrixUnitTests){
