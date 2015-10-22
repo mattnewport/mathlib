@@ -232,7 +232,7 @@ public:
     }
 
     TEST_METHOD(TestSwizzle) {
-        static_assert(Max<5, 3, 7, 1, 3>::value == 7, "");
+        static_assert(detail::Max<5, 3, 7, 1, 3>::value == 7, "");
         constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
         constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
         Assert::AreEqual(v0, v1);

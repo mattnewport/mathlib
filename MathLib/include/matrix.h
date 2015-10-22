@@ -147,13 +147,7 @@ constexpr auto operator*(const Vector<T, M>& v, const Matrix<T, M, N>& m) {
 
 template <typename T, typename U, size_t M, size_t N, size_t P>
 inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) {
-    Matrix<std::common_type_t<T, U>, M, P> res;
-    for (auto c = 0; c < N; ++c) {
-        for (auto r = 0; r < M; ++r) {
-            res[r][c] = dot(a.row(r), b.column(c));
-        }
-    }
-    return res;
+    return memberwiseScalar(std::multiplies<>{}, a.rows(), b);
 }
 
 inline auto toXMVector(const Vec4f& v) {

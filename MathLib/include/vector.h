@@ -230,7 +230,7 @@ constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
 
 template <typename F, size_t... Is, typename T, typename U>
 constexpr auto memberwiseScalarImpl(F f, std::index_sequence<Is...>,
-                                    const Vector<T, sizeof...(Is)>& x, U y) {
+                                    const Vector<T, sizeof...(Is)>& x, U&& y) {
     return Vector<decltype(f(x[0], y)), sizeof...(Is)>{f(x[Is], y)...};
 }
 
@@ -279,6 +279,15 @@ constexpr auto asTuple(const Vector<T, N>& a, std::index_sequence<Is...>) {
 template <size_t I, size_t J>
 struct MaxImpl : public std::integral_constant<size_t, (J > I ? J : I)> {};
 
+template <size_t... Is>
+struct Max;
+
+template <size_t I>
+struct Max<I> : public std::integral_constant<size_t, I> {};
+
+template <size_t I, size_t... Is>
+struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
+
 }  // namespace detail
 
 // Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
@@ -289,19 +298,10 @@ struct MaxImpl : public std::integral_constant<size_t, (J > I ? J : I)> {};
 // e.g. result of swizzle<X>(Vec4f) is a float not a Vector<float, 1>
 enum SwizzleConstants { X = 0, Y = 1, Z = 2, W = 3 };
 
-template <size_t... Is>
-struct Max;
-
-template <size_t I>
-struct Max<I> : public std::integral_constant<size_t, I> {};
-
-template <size_t I, size_t... Is>
-struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
-
 template <size_t... Is, typename V>
 constexpr auto swizzle(const V& x) {
     static_assert(IsVector<V>::value, "Argument to swizzle() must be a Vector.");
-    static_assert(VectorDimension<V>::value > Max<Is...>::value,
+    static_assert(VectorDimension<V>::value > detail::Max<Is...>::value,
                   "All swizzle args must be <= Vector dimension.");
     using T = VectorElementType_t<V>;
     using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
@@ -335,8 +335,9 @@ constexpr auto memberwise(F&& f, Us&&... us) {
 // Apply a function F(T, U) to elements of Vector x and scalar y and return a Vector of the results
 // e.g. memberwiseScalar(op*, Vex3f x, float y) == Vec3f{x.x*y, x.y*y, x.z*y}
 template <typename F, typename T, typename U, size_t N>
-constexpr auto memberwiseScalar(F&& f, const Vector<T, N>& x, U y) {
-    return detail::memberwiseScalarImpl(std::forward<F>(f), Vector<T, N>::is{}, x, y);
+constexpr auto memberwiseScalar(F&& f, const Vector<T, N>& x, U&& y) {
+    return detail::memberwiseScalarImpl(std::forward<F>(f), Vector<T, N>::is{}, x,
+                                        std::forward<U>(y));
 }
 
 // Fold a function F(T, T) over elements of Vector v.
