@@ -255,20 +255,15 @@ inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
 
 template <typename T>
 inline auto Mat4FromQuat(const Quaternion<T>& q) {
+    const auto sq = memberwiseMultiply(q.v(), q.v());
+    const auto sq2 = decltype(q.v()){1} - times2(sq.yzx() + sq.zxy());
+    const auto ws = times2(q.v() * q.w());
+    const auto x = times2(memberwiseMultiply(q.v(), q.v().yzx()));
     using RowVec = Vector<T, 4>;
-    const auto _2x2 = times2(square(q.x()));
-    const auto _2y2 = times2(square(q.y()));
-    const auto _2z2 = times2(square(q.z()));
-    const auto _2xy = times2(q.x() * q.y());
-    const auto _2xz = times2(q.x() * q.z());
-    const auto _2xw = times2(q.x() * q.w());
-    const auto _2yz = times2(q.y() * q.z());
-    const auto _2yw = times2(q.y() * q.w());
-    const auto _2zw = times2(q.z() * q.w());
-    return Matrix<T, 4, 4>{RowVec{T(1) - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, T(0)},
-                           RowVec{_2xy - _2zw, T(1) - _2x2 - _2z2, _2yz + _2xw, T(0)},
-                           RowVec{_2xz + _2yw, _2yz - _2xw, T(1) - _2x2 - _2y2, T(0)},
-                           basisVector<T, 4>(3)};
+    return Matrix<T, 4, 4>{RowVec{sq2.x(), x.x() + ws.z(), x.z() - ws.y(), T(0)},
+                           RowVec{x.x() - ws.z(), sq2.y(), x.y() + ws.x(), T(0)},
+                           RowVec{x.z() + ws.y(), x.y() - ws.x(), sq2.z(), T(0)},
+                           basisVector<T, 4>(W)};
 }
 
 }  // namespace mathlib
