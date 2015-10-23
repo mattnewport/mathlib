@@ -6,9 +6,10 @@
 
 #include "CppUnitTest.h"
 
-#include "mathio.h"
 #include "mathconstants.h"
+#include "mathio.h"
 #include "matrix.h"
+#include "quaternion.h"
 #include "vector.h"
 
 #include <DirectXMath.h>
@@ -22,12 +23,28 @@ using namespace std::literals;
 
 namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework {
 template <typename T, size_t N>
-std::wstring ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
+auto ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
 template <typename T, size_t M, size_t N>
-std::wstring ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
+auto ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
+template <typename T>
+auto ToString(const Quaternion<T>& x) { RETURN_WIDE_STRING(x); }
 }}}
 
 namespace UnitTests {
+
+inline auto toXmVector(const Vec3f& v) { return XMLoadFloat3(std::data({XMFLOAT3{v.data()}})); }
+inline auto toXmVector(const Vec4f& v) { return XMLoadFloat4(std::data({XMFLOAT4{v.data()}})); }
+inline auto toXmVector(const Quatf& q) { return XMLoadFloat4(std::data({XMFLOAT4{q.data()}})); }
+
+inline auto areNearlyEqual(const Quatf& q, const XMVECTOR& xmq, float eps) {
+    const auto diff = toXmVector(q) - xmq;
+    return XMVectorGetX(XMVector4Length(diff)) < eps;
+}
+
+inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
+    const auto diff = toXmVector(v) - xmv;
+    return XMVectorGetX(XMVector3Length(diff)) < eps;
+}
 
 TEST_CLASS(FuncsUnitTests) {
 public:
@@ -135,6 +152,13 @@ public:
 
         const auto v17 = Vec3f{v1.data()};
         Assert::AreEqual(v17, v1.xyz());
+
+        auto v18 = Vec4f{};
+        v18.x() = 1.0f;
+        v18.y() = 2.0f;
+        v18.z() = 3.0f;
+        v18.w() = 4.0f;
+        Assert::AreEqual(v18, Vec4f{ 1,2,3,4 });
     }
 
     TEST_METHOD(TestAdd) {
@@ -194,6 +218,7 @@ public:
         constexpr auto s1 = dot(v0, v3);
         Assert::AreEqual(s1, 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0);
         static_assert(s1 == 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0, "");
+        Assert::AreEqual(dot(v0, v1), v0 | v1);
     }
 
     TEST_METHOD(TestDivide) {
@@ -271,8 +296,8 @@ public:
         constexpr auto v0 = Vec3f{1.0f, 2.0f, 3.0f};
         constexpr auto v1 = Vec3f{4.0f, 5.0f, 6.0f};
         constexpr auto v2 = cross(v0, v1);
-        XMVECTOR xv0{v0.x(), v0.y(), v0.z(), 0.0f};
-        XMVECTOR xv1{v1.x(), v1.y(), v1.z(), 0.0f};
+        const auto xv0 = toXmVector(v0);
+        const auto xv1 = toXmVector(v1);
         auto xv2 = XMVector3Cross(xv0, xv1);
         Assert::IsTrue(memcmp(&xv2, &v2, sizeof(v2)) == 0);
     }
@@ -367,8 +392,7 @@ public:
         const auto v0 = Vec4f{1.0f, 1.0f, 1.0f, 1.0f};
         const auto v1 = v0 * m0;
 
-        auto xmv0 = XMVECTOR{};
-        memcpy(&xmv0, &v0, sizeof(xmv0));
+        const auto xmv0 = toXmVector(v0);
         auto xmm = XMMATRIX{};
         memcpy(&xmm, &m0, sizeof(xmm));
         auto xmv1 = XMVector4Transform(xmv0, xmm);
@@ -412,12 +436,91 @@ public:
 };
 
 TEST_CLASS(QuaternionUnitTests) {
-    TEST_METHOD(TestQuaternionBasics) {
-        Quatf q0{ Vec3f{1.0f, 2.0f, 3.0f}, 4.0f };
-        Quatf q1{ q0 };
-        Assert::IsTrue(q0.x() == 1.0f && q0.y() == 2.0f && q0.z() == 3.0f && q0.w() == 4.0f);
+    TEST_METHOD(TestQuaternionValueInit) {
+        const auto q0 = Quatf{};
+        Assert::AreEqual(q0.xyz(), zeroVector<float, 3>());
     }
 
+    TEST_METHOD(TestQuaternionBasics) {
+        const auto q0 = Quatf{Vec3f{1.0f, 2.0f, 3.0f}, 4.0f};
+        const auto q1 = Quatf{q0};
+        Assert::IsTrue(q0.v() == Vec3f{1, 2, 3} && q0.s() == 4.0f);
+        Assert::IsTrue(q0.x() == q0.v().x() && q0.y() == q0.v().y() && q0.z() == q0.v().z() &&
+                       q0.w() == q0.s());
+        auto q2 = Quatf{};
+        q2.x() = 1.0f;
+        q2.y() = 2.0f;
+        q2.z() = 3.0f;
+        q2.w() = 4.0f;
+        Assert::AreEqual(q2, q0);
+    }
+
+    TEST_METHOD(TestQuaternionFromAxisAngle) {
+        const auto axis = normalize(Vec3f{1, 2, 3});
+        const auto angle = pif / 6.0f;
+        const auto q0 = fromAxisAngle(axis, angle);
+        const auto xmAxis = toXmVector(axis);
+        const auto xmq0 = XMQuaternionRotationAxis(xmAxis, angle);
+        Assert::IsTrue(areNearlyEqual(q0, xmq0, 1e-6f));
+    }
+
+    TEST_METHOD(TestQuaternionVectorRotate) {
+        const auto axis = normalize(Vec3f{1, 2, 3});
+        const auto angle = pif / 6.0f;
+        const auto q0 = fromAxisAngle(axis, angle);
+        const auto xmAxis = toXmVector(axis);
+        const auto xmq0 = XMQuaternionRotationAxis(xmAxis, angle);
+        const auto v0 = Vec3f{4, 5, 6};
+        const auto xmv0 = toXmVector(v0);
+        const auto v1 = rotate(v0, q0);
+        const auto xmv1 = XMVector3Rotate(xmv0, xmq0);
+        Assert::IsTrue(areNearlyEqual(v1, xmv1, 1e-6f));
+    }
+
+    TEST_METHOD(TestQuaternionNorm) {
+        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto s0 = norm(q0);
+        const auto xq0 = toXmVector(q0);
+        const auto xs0 = XMQuaternionLength(xq0);
+        Assert::IsTrue(memcmp(&xq0, &q0, sizeof(q0)) == 0);
+    }
+
+    TEST_METHOD(TestQuaternionAdd) {
+        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q2 = q0 + q1;
+        const auto xq0 = toXmVector(q0);
+        const auto xq1 = toXmVector(q1);
+        const auto xq2 = xq0 + xq1;
+        Assert::IsTrue(memcmp(&xq2, &q2, sizeof(q2)) == 0);
+    }
+
+    TEST_METHOD(TestQuaternionSubtract) {
+        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q2 = q1 - q0;
+        const auto xq0 = toXmVector(q0);
+        const auto xq1 = toXmVector(q1);
+        const auto xq2 = xq1 - xq0;
+        Assert::IsTrue(memcmp(&xq2, &q2, sizeof(q2)) == 0);
+    }
+
+    TEST_METHOD(TestQuaternionConjugate) {
+        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q1 = ~q0;
+        const auto xq1 = XMQuaternionConjugate(toXmVector(q0));
+        Assert::IsTrue(memcmp(&xq1, &q1, sizeof(q1)) == 0);
+    }
+
+    TEST_METHOD(TestQuaternionMultiply) {
+        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q2 = q0 * q1;
+        const auto xq0 = toXmVector(q0);
+        const auto xq1 = toXmVector(q1);
+        const auto xq2 = XMQuaternionMultiply(xq1, xq0);
+        Assert::IsTrue(memcmp(&xq2, &q2, sizeof(q2)) == 0);
+    }
 };
 
 }

@@ -79,7 +79,7 @@ namespace detail {
 template <typename T, size_t M, size_t N, size_t... Is>
 constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
                                 std::index_sequence<Is...>) {
-    return Vector<T, N>{dot(v, m.column(Is))...};
+    return Vector<T, N>{(v | m.column(Is))...};
 }
 }
 

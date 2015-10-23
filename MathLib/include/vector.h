@@ -96,11 +96,11 @@ public:
     }
 
     // Common swizzles
-    constexpr auto xy() const { return swizzle<X, Y>(*this); }
-    constexpr auto xz() const { return swizzle<X, Z>(*this); }
-    constexpr auto xyz() const { return swizzle<X, Y, Z>(*this); }
-    constexpr auto yzx() const { return swizzle<Y, Z, X>(*this); }
-    constexpr auto zxy() const { return swizzle<Z, X, Y>(*this); }
+    constexpr const auto xy() const { return swizzle<X, Y>(*this); }
+    constexpr const auto xz() const { return swizzle<X, Z>(*this); }
+    constexpr const auto xyz() const { return swizzle<X, Y, Z>(*this); }
+    constexpr const auto yzx() const { return swizzle<Y, Z, X>(*this); }
+    constexpr const auto zxy() const { return swizzle<Z, X, Y>(*this); }
 
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
@@ -428,6 +428,11 @@ constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<U, N>& y) 
 template <typename T, typename U, size_t N>
 constexpr auto dot(const Vector<T, N>& a, const Vector<U, N>& b) {
     return fold(std::plus<>{}, memberwiseMultiply(a, b));
+}
+
+template <typename T, typename U, size_t N>
+constexpr auto operator|(const Vector<T, N>& a, const Vector<U, N>& b) {
+    return dot(a, b);
 }
 
 template <typename T, size_t N>
