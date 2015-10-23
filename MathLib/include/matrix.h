@@ -74,16 +74,37 @@ private:
     }
 };
 
-// Implementation helpers for operators and free functions, not part of public API
-namespace detail {
-template <typename T, size_t M, size_t N, size_t... Is>
-constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
-                                std::index_sequence<Is...>) {
-    return Vector<T, N>{(v | m.column(Is))...};
-}
-}
-
 using Mat4f = Matrix<float, 4, 4>;
+
+// Useful type traits for working with Matrices
+template<typename T>
+struct IsMatrix : std::false_type {};
+
+template<typename T, size_t M, size_t N>
+struct IsMatrix<Matrix<T, M, N>> : std::true_type {};
+
+template<typename T>
+struct MatrixRows;
+
+template<typename T, size_t M, size_t N>
+struct MatrixRows<Matrix<T, M, N>> : std::integral_constant<size_t, M> {};
+
+template<typename T>
+struct MatrixColumns;
+
+template<typename T, size_t M, size_t N>
+struct MatrixColumns<Matrix<T, M, N>> : std::integral_constant<size_t, N> {};
+
+template<typename T>
+struct MatrixElementType;
+
+template<typename T, size_t M, size_t N>
+struct MatrixElementType<Matrix<T, M, N>> {
+    using type = T;
+};
+
+template<typename T>
+using MatrixElementType_t = typename MatrixElementType<T>::type;
 
 template <typename T, size_t M, size_t N>
 inline auto MatrixFromDataPointer(const T* p) {
@@ -91,6 +112,33 @@ inline auto MatrixFromDataPointer(const T* p) {
     std::memcpy(&res, p, sizeof(res));
     return res;
 }
+
+template <typename M>
+inline auto MatrixFromDataPointer(const MatrixElementType_t<M>* p) {
+    return MatrixFromDataPointer<MatrixElementType_t<M>, MatrixRows<M>::value,
+        MatrixColumns<M>::value>(p);
+}
+
+// Implementation helpers for operators and free functions, not part of public API
+namespace detail {
+template <typename T, size_t M, size_t N, size_t... Is>
+constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
+                                std::index_sequence<Is...>) {
+    return Vector<T, N>{(v | m.column(Is))...};
+}
+
+// temporary until all below functions are implemented without DirectXMath
+inline auto toXMVector(const Vec4f& v) {
+    auto res = DirectX::XMVECTOR{};
+    memcpy(&res, &v, sizeof(res));
+    return res;
+}
+
+inline auto toMat4f(const DirectX::XMMATRIX& m) {
+    return MatrixFromDataPointer<Mat4f>(&m.r[0].m128_f32[0]);
+}
+
+} // namespace detail
 
 template <typename... Us>
 constexpr auto MatrixFromRows(Us&&... us) {
@@ -171,16 +219,6 @@ inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) {
     return res;
 }
 
-inline auto toXMVector(const Vec4f& v) {
-    auto res = DirectX::XMVECTOR{};
-    memcpy(&res, &v, sizeof(res));
-    return res;
-}
-
-inline auto toMat4f(const DirectX::XMMATRIX& m) {
-    return MatrixFromDataPointer<float, 4, 4>(&m.r[0].m128_f32[0]);
-}
-
 template <typename T, size_t M, size_t N>
 constexpr auto zeroMatrix() {
     return Matrix<T, M, N>{zeroVector<T, N>()};
@@ -207,15 +245,16 @@ inline auto translationMat4f(const Vec3f& t) {
 }
 
 inline auto rotationYMat4f(float angle) {
-    return toMat4f(DirectX::XMMatrixRotationY(angle));
+    return detail::toMat4f(DirectX::XMMatrixRotationY(angle));
 }
 
 inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
-    return toMat4f(DirectX::XMMatrixLookAtRH(toXMVector(eye), toXMVector(at), toXMVector(up)));
+    return detail::toMat4f(DirectX::XMMatrixLookAtRH(
+        detail::toXMVector(eye), detail::toXMVector(at), detail::toXMVector(up)));
 }
 
 template <typename T>
-inline Matrix<T, 4, 4> Mat4FromQuat(const Quaternion<T>& q) {
+inline auto Mat4FromQuat(const Quaternion<T>& q) {
     using RowVec = Vector<T, 4>;
     const auto _2x2 = times2(square(q.x()));
     const auto _2y2 = times2(square(q.y()));
@@ -226,9 +265,10 @@ inline Matrix<T, 4, 4> Mat4FromQuat(const Quaternion<T>& q) {
     const auto _2yz = times2(q.y() * q.z());
     const auto _2yw = times2(q.y() * q.w());
     const auto _2zw = times2(q.z() * q.w());
-    return {RowVec{T(1) - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, T(0)},
-            RowVec{_2xy - _2zw, T(1) - _2x2 - _2z2, _2yz + _2xw, T(0)},
-            RowVec{_2xz + _2yw, _2yz - _2xw, T(1) - _2x2 - _2y2, T(0)}, basisVector<T, 4>(3)};
+    return Matrix<T, 4, 4>{RowVec{T(1) - _2y2 - _2z2, _2xy + _2zw, _2xz - _2yw, T(0)},
+                           RowVec{_2xy - _2zw, T(1) - _2x2 - _2z2, _2yz + _2xw, T(0)},
+                           RowVec{_2xz + _2yw, _2yz - _2xw, T(1) - _2x2 - _2y2, T(0)},
+                           basisVector<T, 4>(3)};
 }
 
 }  // namespace mathlib

@@ -36,6 +36,15 @@ inline auto toXmVector(const Vec3f& v) { return XMLoadFloat3(std::data({XMFLOAT3
 inline auto toXmVector(const Vec4f& v) { return XMLoadFloat4(std::data({XMFLOAT4{v.data()}})); }
 inline auto toXmVector(const Quatf& q) { return XMLoadFloat4(std::data({XMFLOAT4{q.data()}})); }
 
+inline auto toMat4f(const XMMATRIX& xmm) {
+    return MatrixFromDataPointer<Mat4f>(&xmm.r[0].m128_f32[0]);
+}
+
+template<typename T>
+constexpr auto areNearlyEqual(const T& a, const T& b, const T& eps) {
+    return std::abs(a - b) < eps;
+}
+
 inline auto areNearlyEqual(const Quatf& q, const XMVECTOR& xmq, float eps) {
     const auto diff = toXmVector(q) - xmq;
     return XMVectorGetX(XMVector4Length(diff)) < eps;
@@ -44,6 +53,15 @@ inline auto areNearlyEqual(const Quatf& q, const XMVECTOR& xmq, float eps) {
 inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
     const auto diff = toXmVector(v) - xmv;
     return XMVectorGetX(XMVector3Length(diff)) < eps;
+}
+
+template <typename T, size_t M, size_t N>
+inline auto areNearlyEqual(const Matrix<T, M, N>& x, const Matrix<T, M, N>& y, const T& eps) {
+    using namespace std;
+    T diffs[M * N] = {};
+    transform(begin(x), end(x), begin(y), stdext::make_unchecked_array_iterator(begin(diffs)),
+              [](const T& a, const T& b) { return abs(a - b); });
+    return all_of(begin(diffs), end(diffs), [eps](const T& d) { return d < eps; });
 }
 
 TEST_CLASS(FuncsUnitTests) {
@@ -138,12 +156,12 @@ public:
         Vec3f v14 = v13;
 
         Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
-        Assert::IsTrue(-v14 + +v14 == zeroVector<float, 3>());
+        Assert::IsTrue(-v14 + +v14 == zeroVector<Vec3f>());
 
         auto pv = new(&v14) Vec3f;
         Assert::AreEqual(*pv, v12);
         pv = new(&v14) Vec3f{};
-        Assert::AreEqual(*pv, zeroVector<float, 3>());
+        Assert::AreEqual(*pv, zeroVector<Vec3f>());
 
         auto v15 = basisVector<float, 3>(Y);
         Assert::AreEqual(v15, Vec3f{0, 1, 0});
@@ -336,6 +354,9 @@ public:
         Assert::IsTrue(std::all_of(std::begin(m5), std::end(m5), [](auto x) { return x == 0.0f; }));
 
         Assert::AreEqual(ToString(m0), L"{{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}}"s);
+
+        const auto m6 = m4 + Mat4f{Vec4f{5e-7f}};
+        Assert::IsTrue(areNearlyEqual(m6, m4, 1e-6f));
     }
 
     TEST_METHOD(TestMatrixAdd) {
@@ -422,6 +443,18 @@ public:
         Assert::IsTrue(memcmp(&m, &xmm, sizeof(m)) == 0);
     }
 
+    TEST_METHOD(TestMat4FromQuat) {
+        const auto axis = normalize(Vec3f{ 1, 2, 3 });
+        const auto angle = pif / 6.0f;
+        const auto q0 = fromAxisAngle(axis, angle);
+        const auto m0 = Mat4FromQuat(q0);
+        const auto xmq0 = XMQuaternionRotationAxis(toXmVector(axis), angle);
+        const auto xmm0 = XMMatrixRotationQuaternion(xmq0);
+        XMMATRIX xmm;
+        const auto m1 = toMat4f(xmm0);
+        Assert::IsTrue(areNearlyEqual(m0, m1, 1e-6f));
+    }
+
     TEST_METHOD(TestTranspose) {
         constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
         constexpr auto v1 = Vec4f{5.0f, 6.0f, 7.0f, 8.0f};
@@ -438,7 +471,7 @@ public:
 TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionValueInit) {
         const auto q0 = Quatf{};
-        Assert::AreEqual(q0.xyz(), zeroVector<float, 3>());
+        Assert::AreEqual(q0.xyz(), zeroVector<Vec3f>());
     }
 
     TEST_METHOD(TestQuaternionBasics) {

@@ -318,13 +318,20 @@ constexpr auto swizzle(const V& x) {
 
 // Returns a vector of all zeros
 // e.g. zeroVector<float, 3>() == Vec3f{0.0f, 0.0f, 0.0f}
+// e.g. zeroVector<Vec3f>() = Vec3f{0.0f, 0.0f, 0.0f};
 template <typename T, size_t N>
 constexpr auto zeroVector() {
     return Vector<T, N>{T(0)};
 }
 
+template<typename V>
+constexpr auto zeroVector() {
+    return zeroVector<VectorElementType_t<V>, VectorDimension<V>::value>();
+}
+
 // Returns a basis vector with 1 in the specified position and 0 elsewhere,
 // e.g. basisVector<float, 3>(2) == Vec3f{0.0f, 1.0f, 0.0f}
+// e.g. basisVector<Vec3f>(Y) == Vec3f{0.0f, 1.0f, 0.0f}
 template <typename T, size_t N>
 constexpr auto basisVector(size_t i) {
     return detail::basisVectorImpl<T, N>(i, std::make_index_sequence<N>{});
