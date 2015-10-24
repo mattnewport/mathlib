@@ -22,8 +22,8 @@ using namespace mathlib;
 using namespace std::literals;
 
 namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework {
-template <typename T, size_t N>
-auto ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
+template <typename T, size_t N, typename IS>
+auto ToString(const Vector<T, N, IS>& x) { RETURN_WIDE_STRING(x); }
 template <typename T, size_t M, size_t N>
 auto ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
 template <typename T>
@@ -76,7 +76,7 @@ public:
     TEST_METHOD(TestMax) {
         constexpr auto v0 = Vec3f{ -0.5f, 2.0f, 1.1f };
         constexpr auto v1 = Vec3f{ 0.5f, 0.6f, 0.7f };
-        const auto v3 = max(v0, v1);
+        const auto v3 = mathlib::max(v0, v1);
         Assert::AreEqual(v3, Vec3f{ 0.5f, 2.0f, 1.1f });
     }
 

@@ -120,8 +120,7 @@ inline auto MatrixFromDataPointer(const MatrixElementType_t<M>* p) {
 // Implementation helpers for operators and free functions, not part of public API
 namespace detail {
 template <typename T, size_t M, size_t N, size_t... Is>
-constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
-                                std::index_sequence<Is...>) {
+constexpr auto vecMatMultHelper(const Vector<T, M, std::index_sequence<Is...>>& v, const Matrix<T, M, N>& m) {
     return Vector<T, N>{(v | m.column(Is))...};
 }
 
@@ -192,9 +191,9 @@ constexpr auto operator*(U s, const Matrix<T, M, N>& x) {
     return x * s;
 }
 
-template <typename T, size_t M, size_t N>
-constexpr auto operator*(const Vector<T, M>& v, const Matrix<T, M, N>& m) {
-    return detail::vecMatMultHelper(v, m, std::make_index_sequence<N>{});
+template <typename T, size_t M, size_t N, typename IS>
+constexpr auto operator*(const Vector<T, M, IS>& v, const Matrix<T, M, N>& m) {
+    return detail::vecMatMultHelper(v, m);
 }
 
 template <typename T, typename U, size_t M, size_t N, size_t P>

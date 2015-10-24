@@ -16,8 +16,8 @@ struct separator {
 const char* const separator<char>::value = ", ";
 const wchar_t* const separator<wchar_t>::value = L", ";
 
-template <typename T, size_t N, typename CharT>
-auto& operator<<(std::basic_ostream<CharT>& os, const Vector<T, N>& x) {
+template <typename T, size_t N, typename IS, typename CharT>
+auto& operator<<(std::basic_ostream<CharT>& os, const Vector<T, N, IS>& x) {
     using namespace std;
     copy(cbegin(x), prev(cend(x)), ostream_iterator<T, CharT>{os << "{", separator<CharT>::value});
     copy(prev(cend(x)), cend(x), ostream_iterator<T, CharT>{os});
