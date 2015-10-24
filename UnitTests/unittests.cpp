@@ -241,8 +241,8 @@ public:
 
     TEST_METHOD(TestDivide) {
         constexpr Vec3f v0{2.0f, 4.0f, 6.0f};
-        constexpr auto v1 = v0 / 2.0f;
-        static_assert(v1 == Vec3f{1.0f, 2.0f, 3.0f}, "");
+        const auto v1 = v0 / 2.0f;
+        //static_assert(v1 == Vec3f{1.0f, 2.0f, 3.0f}, "");
         Assert::AreEqual(v1, Vec3f{1.0f, 2.0f, 3.0f});
 
         constexpr Vec3i v2{2, 4, 6};
@@ -252,10 +252,10 @@ public:
     }
 
     TEST_METHOD(TestMagnitude) {
-        constexpr Vec2f v0{3.0f, 4.0f};
+        const Vec2f v0{3.0f, 4.0f};
         const auto s0 = magnitude(v0);
         Assert::AreEqual(s0, 5.0f);
-        constexpr Vec3f v1{1.0f, 1.0f, 1.0f};
+        const Vec3f v1{1.0f, 1.0f, 1.0f};
         const auto s1 = magnitude(v1);
         Assert::AreEqual(s1, sqrt(3.0f));
     }
@@ -313,7 +313,7 @@ public:
     TEST_METHOD(TestCross) {
         constexpr auto v0 = Vec3f{1.0f, 2.0f, 3.0f};
         constexpr auto v1 = Vec3f{4.0f, 5.0f, 6.0f};
-        constexpr auto v2 = cross(v0, v1);
+        const auto v2 = cross(v0, v1);
         const auto xv0 = toXmVector(v0);
         const auto xv1 = toXmVector(v1);
         auto xv2 = XMVector3Cross(xv0, xv1);
@@ -440,7 +440,7 @@ public:
         const auto angle = pif / 4.0f;
         auto m = rotationYMat4f(angle);
         auto xmm = XMMatrixRotationY(angle);
-        Assert::IsTrue(memcmp(&m, &xmm, sizeof(m)) == 0);
+        Assert::IsTrue(areNearlyEqual(m, toMat4f(xmm), 1e-6f));
     }
 
     TEST_METHOD(TestMat4FromQuat) {
@@ -465,6 +465,24 @@ public:
         const auto m2 = Mat4f{Vec4f{1.0f, 5.0f, 9.0f, 13.0f}, Vec4f{2.0f, 6.0f, 10.0f, 14.0f},
                               Vec4f{3.0f, 7.0f, 11.0f, 15.0f}, Vec4f{4.0f, 8.0f, 12.0f, 16.0f}};
         Assert::IsTrue(m1 == m2);
+    }
+
+    TEST_METHOD(TestRotationYMat4f) {
+        const auto angle = pif / 6.0f;
+        const auto m0 = rotationYMat4f(angle);
+        const auto xmm0 = XMMatrixRotationY(angle);
+        Assert::IsTrue(areNearlyEqual(m0, toMat4f(xmm0), 1e-6f));
+    }
+
+    TEST_METHOD(TestLookAtRhMat4f) {
+        const auto eyePos = Vec3f{ 1, 2, 3 };
+        const auto at = Vec3f{ 4, 5, 6 };
+        const auto up = basisVector<Vec3f>(Y);
+        const auto m0 = lookAtRhMat4f(eyePos, at, up);
+        const auto xmm0 = DirectX::XMMatrixLookAtRH(detail::toXMVector(Vec4f{eyePos, 0}),
+                                                    detail::toXMVector(Vec4f{at, 0}),
+                                                    detail::toXMVector(Vec4f{up, 0}));
+        Assert::IsTrue(areNearlyEqual(m0, toMat4f(xmm0), 1e-6f));
     }
 };
 

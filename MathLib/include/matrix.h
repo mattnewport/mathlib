@@ -245,12 +245,27 @@ inline auto translationMat4f(const Vec3f& t) {
 }
 
 inline auto rotationYMat4f(float angle) {
-    return detail::toMat4f(DirectX::XMMatrixRotationY(angle));
+    const auto sinAngle = std::sin(angle);
+    const auto cosAngle = std::cos(angle);
+    return Mat4f{Vec4f{cosAngle, 0, -sinAngle, 0}, basisVector<Vec4f>(Y),
+                 Vec4f{sinAngle, 0, cosAngle, 0}, basisVector<Vec4f>(W)};
 }
 
-inline auto lookAtRhMat4f(const Vec4f& eye, const Vec4f& at, const Vec4f& up) {
-    return detail::toMat4f(DirectX::XMMatrixLookAtRH(
-        detail::toXMVector(eye), detail::toXMVector(at), detail::toXMVector(up)));
+// up should be a normalized direction vector
+inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) {
+    const auto forward = normalize(at - eye);
+    const auto right = cross(forward, up);
+    const auto finalUp = cross(right, forward);
+    const auto negEyePos = -eye;
+    const auto d0 = right | negEyePos;
+    const auto d1 = finalUp | negEyePos;
+    const auto d2 = forward | negEyePos;
+    const auto m = MatrixFromColumns(Vec4f{right, 0}, Vec4f{finalUp, 0}, Vec4f{forward, 0},
+                                     Vec4f{d0, d1, d2, 1});
+    const auto xmm = detail::toMat4f(DirectX::XMMatrixLookAtRH(detail::toXMVector(Vec4f{eye, 0}),
+                                                               detail::toXMVector(Vec4f{at, 0}),
+                                                               detail::toXMVector(Vec4f{up, 0})));
+    return m;
 }
 
 template <typename T>
