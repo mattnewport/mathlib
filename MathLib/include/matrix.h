@@ -7,8 +7,6 @@
 #include <cstdlib>
 #include <initializer_list>
 
-#include <DirectXMath.h>
-
 namespace mathlib {
 
 template <typename T, size_t M, size_t N>
@@ -127,17 +125,6 @@ constexpr auto vecMatMultHelper(const Vector<T, M>& v, const Matrix<T, M, N>& m,
     return Vector<T, N>{(v | m.column(Is))...};
 }
 
-// temporary until all below functions are implemented without DirectXMath
-inline auto toXMVector(const Vec4f& v) {
-    auto res = DirectX::XMVECTOR{};
-    memcpy(&res, &v, sizeof(res));
-    return res;
-}
-
-inline auto toMat4f(const DirectX::XMMATRIX& m) {
-    return MatrixFromDataPointer<Mat4f>(&m.r[0].m128_f32[0]);
-}
-
 } // namespace detail
 
 template <typename... Us>
@@ -253,19 +240,17 @@ inline auto rotationYMat4f(float angle) {
 
 // up should be a normalized direction vector
 inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) {
-    const auto forward = normalize(at - eye);
-    const auto right = cross(forward, up);
-    const auto finalUp = cross(right, forward);
+    const auto zAxis = normalize(eye - at);
+    const auto xAxis = normalize(cross(up, zAxis));
+    const auto yAxis = cross(zAxis, xAxis);
     const auto negEyePos = -eye;
-    const auto d0 = right | negEyePos;
-    const auto d1 = finalUp | negEyePos;
-    const auto d2 = forward | negEyePos;
-    const auto m = MatrixFromColumns(Vec4f{right, 0}, Vec4f{finalUp, 0}, Vec4f{forward, 0},
-                                     Vec4f{d0, d1, d2, 1});
-    const auto xmm = detail::toMat4f(DirectX::XMMatrixLookAtRH(detail::toXMVector(Vec4f{eye, 0}),
-                                                               detail::toXMVector(Vec4f{at, 0}),
-                                                               detail::toXMVector(Vec4f{up, 0})));
-    return m;
+    // MNTODO: using real dot product here causes an ICE in VS2015 RTM. Bug reported to MS.
+    auto localDot = [](auto x, auto y) { return x.x() * y.x() + x.y() * y.y() + x.z() * y.z(); };
+    const auto dx = localDot(xAxis, negEyePos);
+    const auto dy = localDot(yAxis, negEyePos);
+    const auto dz = localDot(zAxis, negEyePos);
+    return MatrixFromColumns(Vec4f{xAxis, dx}, Vec4f{yAxis, dy}, Vec4f{zAxis, dz},
+                             basisVector<Vec4f>(W));
 }
 
 template <typename T>

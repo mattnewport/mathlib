@@ -475,13 +475,12 @@ public:
     }
 
     TEST_METHOD(TestLookAtRhMat4f) {
-        const auto eyePos = Vec3f{ 1, 2, 3 };
-        const auto at = Vec3f{ 4, 5, 6 };
+        const auto eyePos = Vec3f{1, 2, 3};
+        const auto at = Vec3f{4, 5, 6};
         const auto up = basisVector<Vec3f>(Y);
         const auto m0 = lookAtRhMat4f(eyePos, at, up);
-        const auto xmm0 = DirectX::XMMatrixLookAtRH(detail::toXMVector(Vec4f{eyePos, 0}),
-                                                    detail::toXMVector(Vec4f{at, 0}),
-                                                    detail::toXMVector(Vec4f{up, 0}));
+        const auto xmm0 = DirectX::XMMatrixLookAtRH(
+            toXmVector(Vec4f{eyePos, 0}), toXmVector(Vec4f{at, 0}), toXmVector(Vec4f{up, 0}));
         Assert::IsTrue(areNearlyEqual(m0, toMat4f(xmm0), 1e-6f));
     }
 };
