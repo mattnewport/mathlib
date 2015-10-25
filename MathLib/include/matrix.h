@@ -243,12 +243,8 @@ inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) {
     const auto xAxis = normalize(cross(up, zAxis));
     const auto yAxis = cross(zAxis, xAxis);
     const auto negEyePos = -eye;
-    // MNTODO: using real dot product here causes an ICE in VS2015 RTM. Bug reported to MS.
-    auto localDot = [](auto x, auto y) { return x.x() * y.x() + x.y() * y.y() + x.z() * y.z(); };
-    const auto dx = localDot(xAxis, negEyePos);
-    const auto dy = localDot(yAxis, negEyePos);
-    const auto dz = localDot(zAxis, negEyePos);
-    return MatrixFromColumns(Vec4f{xAxis, dx}, Vec4f{yAxis, dy}, Vec4f{zAxis, dz},
+    const auto d = Vec3f{xAxis | negEyePos, yAxis | negEyePos, zAxis | negEyePos};
+    return MatrixFromColumns(Vec4f{xAxis, d.x()}, Vec4f{yAxis, d.y()}, Vec4f{zAxis, d.z()},
                              basisVector<Vec4f>(W));
 }
 
