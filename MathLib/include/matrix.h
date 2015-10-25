@@ -191,8 +191,8 @@ constexpr auto operator*(U s, const Matrix<T, M, N>& x) {
     return x * s;
 }
 
-template <typename T, size_t M, size_t N, typename IS>
-constexpr auto operator*(const Vector<T, M, IS>& v, const Matrix<T, M, N>& m) {
+template <typename T, size_t M, size_t N>
+constexpr auto operator*(const Vector<T, M>& v, const Matrix<T, M, N>& m) {
     return detail::vecMatMultHelper(v, m);
 }
 

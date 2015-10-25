@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22823.1
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MathLib", "MathLib\MathLib.vcxproj", "{81E2C79E-F598-44AF-8B14-399D14885138}"
 EndProject
@@ -9,16 +9,26 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "UnitTests\Unit
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{81E2C79E-F598-44AF-8B14-399D14885138}.Debug|x64.ActiveCfg = Debug|x64
+		{81E2C79E-F598-44AF-8B14-399D14885138}.Debug|x64.Build.0 = Debug|x64
 		{81E2C79E-F598-44AF-8B14-399D14885138}.Debug|x86.ActiveCfg = Debug|Win32
 		{81E2C79E-F598-44AF-8B14-399D14885138}.Debug|x86.Build.0 = Debug|Win32
+		{81E2C79E-F598-44AF-8B14-399D14885138}.Release|x64.ActiveCfg = Release|x64
+		{81E2C79E-F598-44AF-8B14-399D14885138}.Release|x64.Build.0 = Release|x64
 		{81E2C79E-F598-44AF-8B14-399D14885138}.Release|x86.ActiveCfg = Release|Win32
 		{81E2C79E-F598-44AF-8B14-399D14885138}.Release|x86.Build.0 = Release|Win32
+		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Debug|x64.ActiveCfg = Debug|x64
+		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Debug|x64.Build.0 = Debug|x64
 		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Debug|x86.ActiveCfg = Debug|Win32
 		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Debug|x86.Build.0 = Debug|Win32
+		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Release|x64.ActiveCfg = Release|x64
+		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Release|x64.Build.0 = Release|x64
 		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Release|x86.ActiveCfg = Release|Win32
 		{F154ADFF-6935-4438-B7D9-A6088D6EA86A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection

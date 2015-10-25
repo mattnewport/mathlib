@@ -28,7 +28,7 @@ struct floating_point_tag {};
 template <typename T>
 using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_tag, integral_tag>;
 
-template <typename T, size_t N, typename IS = decltype(std::make_index_sequence<N>{})>
+template <typename T, size_t N, typename IS = std::make_index_sequence<N>>
 class Vector {
 public:
     using is = IS;
@@ -46,19 +46,19 @@ public:
     
     // For convenience we have an explicit constructor taking a single argument that sets all
     // members of the vector to the value of that argument.
-    explicit Vector(const T& x) : Vector{x, is{}} {}
+    explicit Vector(const T& x) : Vector{x, IS{}} {}
     // Templated conversion constructor from a Vector<U, N>
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <typename U>
-    Vector(const Vector<U, N>& x) : Vector{x, is{}} {}
+    Vector(const Vector<U, N>& x) : Vector{x, IS{}} {}
     // Templated conversion constructor from a Vector<U, N-1> and a scalar V
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
-    template <typename U, typename V>
-    explicit Vector(const Vector<U, N - 1>& x, V&& s)
-        : Vector{x, std::forward<V>(s), std::make_index_sequence<N - 1>{}} {}
+    template <typename U, typename V, size_t... Is>
+    constexpr explicit Vector(const Vector<U, N - 1, std::index_sequence<Is...>>& x, V&& s)
+        : e_{T(x.e(Is))..., T(s)} {}
 
     // Construct from a pointer to N Ts
-    explicit Vector(const T* p) : Vector{p, is{}} {}
+    explicit Vector(const T* p) : Vector{p, IS{}} {}
 
     // Generic element access
     T& operator[](size_t i) { return e_[i]; }
@@ -115,22 +115,22 @@ public:
 
     template <typename U>
     Vector& operator+=(const Vector<U, N>& x) {
-        return plusEquals(x, is{});
+        return plusEquals(x, IS{});
     }
 
     template <typename U>
     Vector& operator-=(const Vector<U, N>& x) {
-        return minusEquals(x, is{});
+        return minusEquals(x, IS{});
     }
 
     template <typename U>
     Vector& operator*=(U x) {
-        return multiplyEquals(x, is{});
+        return multiplyEquals(x, IS{});
     }
 
     template <typename U>
     Vector& operator/=(U x) {
-        return divideEquals(x, is{}, tag<U>{});
+        return divideEquals(x, IS{}, tag<U>{});
     }
 
 private:
@@ -143,10 +143,6 @@ private:
     // From a Vector<U, N> where U is convertible to T
     template <typename U, size_t... Is>
     constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) : e_{T(x.e(Is))...} {}
-    // From a Vector<U, N-1> and a scalar V where U and V are convertible to T
-    template <typename U, typename V, size_t... Is>
-    explicit constexpr Vector(const Vector<U, N - 1>& x, V s, std::index_sequence<Is...>)
-        : e_{T(x.e(Is))..., T(s)} {}
     // From a const T* of N contiguous elements
     template <size_t... Is>
     explicit Vector(const T* ts, std::index_sequence<Is...>) : e_{ts[Is]...} {}
@@ -220,18 +216,6 @@ using VectorElementType_t = typename VectorElementType<T>::type;
 
 // Implementation helpers for operators and free functions, not part of public API
 namespace detail {
-
-template <size_t I, typename F, typename... Us>
-constexpr auto memberApply(F&& f, Us&&... us) {
-    return f(us[I]...);
-}
-
-// Implementation helpers for memberwise and memberwiseBoundArg
-template <typename F, size_t... Is, typename... Us>
-constexpr auto memberwiseImpl(F f, std::index_sequence<Is...>, Us&&... us) {
-    using T = decltype(memberApply<0>(f, us...));
-    return Vector<T, sizeof...(Is)>{memberApply<Is>(f, std::forward<Us>(us)...)...};
-}
 
 // MNTODO: replace this fold machinery with C++17 fold expressions once available
 // Manually expanded for first few arguments to reduce inlining depth.
@@ -333,16 +317,6 @@ constexpr auto basisVector(size_t i) {
     return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
 }
 
-// Takes a function f that takes one or more arguments of type Vector<_, N> and calls it memberwise
-// on elements of the arguments, returning the memberwise result.
-// e.g. memberwise(op+, Vec3f x, Vec3f y) == Vec3f{x.x + y.x, x.y + y.y, x.z + y.z}
-template <typename F, typename... Us>
-constexpr auto memberwise(F&& f, Us&&... us) {
-    using Vector = std::common_type_t<Us...>;
-    static_assert(IsVector<Vector>::value, "memberwise(f, us...): us... should all be Vectors.");
-    return detail::memberwiseImpl(std::forward<F>(f), Vector::is(), std::forward<Us>(us)...);
-}
-
 // Apply a function F(T, U) memberwise to elements of Vector x with fixed bound arg U y and return a
 // Vector of the results. This could be implemented in terms of memberwise with a lambda or
 // std::bind but can't use std::bind or lambdas in a constexpr function.
@@ -394,34 +368,36 @@ constexpr auto operator+(const Vector<T, N, std::index_sequence<Is...>>& a, cons
     return Vector<V, N>{a.e(Is) + b.e(Is)...};
 }
 
-template<typename T, size_t N, typename IS>
-constexpr auto operator-(const Vector<T, N, IS>& x) {
-    return memberwise(std::negate<>{}, x);
+template<typename T, size_t N, size_t... Is>
+constexpr auto operator-(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return Vector<T, N>{-x.e(Is)...};
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto operator-(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
-    return memberwise(std::minus<>{}, a, b);
+template <typename T, typename U, size_t N, size_t... Is>
+constexpr auto operator-(const Vector<T, N, std::index_sequence<Is...>>& a, const Vector<U, N>& b) {
+    using V = decltype(std::declval<T>() - std::declval<U>());
+    return Vector<V, N>{a.e(Is) - b.e(Is)...};
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto operator*(const Vector<T, N, IS>& a, U s) {
+template <typename T, typename U, size_t N>
+constexpr auto operator*(const Vector<T, N>& a, U s) {
     return memberwiseBoundArg(std::multiplies<>{}, a, s);
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto operator*(T s, const Vector<U, N, IS>& a) {
+template <typename T, typename U, size_t N>
+constexpr auto operator*(T s, const Vector<U, N>& a) {
     return a * s;
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto operator/(const Vector<T, N, IS>& a, U s) {
+template <typename T, typename U, size_t N>
+constexpr auto operator/(const Vector<T, N>& a, U s) {
     return detail::divide(a, s, tag<U>{});
 }
 
-template<typename T, typename U, size_t N, typename IS>
-constexpr auto memberwiseMultiply(const Vector<T, N, IS>& x, const Vector<U, N, IS>& y) {
-    return memberwise(std::multiplies<>{}, x, y);
+template<typename T, typename U, size_t N, size_t... Is>
+constexpr auto memberwiseMultiply(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<U, N>& y) {
+    using V = decltype(std::declval<T>() * std::declval<U>());
+    return Vector<V, N>{x.e(Is) * y.e(Is)...};
 }
 
 template <typename T, typename U, size_t N, typename IS>
@@ -444,14 +420,14 @@ constexpr auto normalize(const Vector<T, N, IS>& a) {
     return a * (T{1} / magnitude(a));
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto min(const Vector<T, N, IS>& x, const Vector<U, N, IS>& y) {
-    return memberwise([](auto x, auto y) { return std::min(x, y); }, x, y);
+template <typename T, size_t N, size_t... Is>
+constexpr auto min(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<T, N>& y) {
+    return Vector<T, N>{std::min(x.e(Is), y.e(Is))...};
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto max(const Vector<T, N, IS>& x, const Vector<U, N, IS>& y) {
-    return memberwise([](auto x, auto y) { return std::max(x, y); }, x, y);
+template <typename T, size_t N, size_t... Is>
+constexpr auto max(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<T, N>& y) {
+    return Vector<T, N>{std::max(x.e(Is), y.e(Is))...};
 }
 
 template <typename T, size_t N, typename IS>
@@ -464,19 +440,25 @@ inline auto& maxElement(const Vector<T, N, IS>& x) {
     return *std::max_element(std::begin(x), std::end(x));
 }
 
-template <typename T, size_t N, typename IS>
-constexpr auto abs(const Vector<T, N, IS>& x) {
-    return memberwise([](auto x) { return std::abs(x); }, x);
+template <typename T, size_t N, size_t... Is>
+constexpr auto abs(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return Vector<T, N>{std::abs(x.e(Is))...};
 }
 
-template <typename T, size_t N, typename IS>
-constexpr auto saturate(const Vector<T, N, IS>& x) {
-    return memberwise([](auto x) { return saturate(x); }, x);
+template <typename T, size_t N, size_t... Is>
+constexpr auto saturate(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return Vector<T, N>{saturate(x.e(Is))...};
 }
 
-template <typename T, typename U, typename V, size_t N, typename IS>
-constexpr auto clamp(const Vector<T, N, IS>& x, const Vector<U, N, IS>& a, const Vector<V, N, IS>& b) {
-    return memberwise([](auto x, auto a, auto b) { return clamp(x, a, b); }, x, a, b);
+template <typename T, size_t N, size_t... Is>
+constexpr auto clamp(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<T, N>& a,
+                     const Vector<T, N>& b) {
+    return Vector<T, N>{clamp(x.e(Is), a.e(Is), b.e(Is))...};
+}
+
+template <typename T, size_t N, size_t... Is>
+constexpr auto clamp(const Vector<T, N, std::index_sequence<Is...>>& x, const T& a, const T& b) {
+    return Vector<T, N>{clamp(x.e(Is), a, b)...};
 }
 
 template <typename T, typename U, typename IS>

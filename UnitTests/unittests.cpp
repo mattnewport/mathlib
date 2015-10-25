@@ -106,6 +106,8 @@ public:
         constexpr auto v2 = Vec3f{1.5f, 1.6f, 1.7f};
         const auto v3 = clamp(v0, v1, v2);
         Assert::AreEqual(v3, Vec3f{0.5f, 1.6f, 1.1f});
+        const auto v4 = clamp(v0, 1.0f, 2.0f);
+        Assert::AreEqual(v4, Vec3f{1.0f, 2.0f, 1.1f});
     }
 };
 
