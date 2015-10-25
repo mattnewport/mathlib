@@ -30,6 +30,9 @@ using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_
 
 template <typename T, size_t N, typename IS = std::make_index_sequence<N>>
 class Vector {
+    template <typename... Ts>
+    static constexpr void eval(Ts&&...) {}
+
 public:
     using is = IS;
 
@@ -41,16 +44,15 @@ public:
     template <typename... Us, typename = std::enable_if_t<(sizeof...(Us) == N - 2)>>
     constexpr Vector(const T& x, const T& y, Us&&... us) : e_{x, y, T(us)...} {}
 
-    // MNTODO: can't make these constructors constexpr due to a bug in VS2015:
-    // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
-    
     // For convenience we have an explicit constructor taking a single argument that sets all
     // members of the vector to the value of that argument.
+    // MNTODO: can't make this constructors constexpr due to a bug in VS2015:
+    // http://stackoverflow.com/questions/32489702/constexpr-with-delegating-constructors
     explicit Vector(const T& x) : Vector{x, IS{}} {}
     // Templated conversion constructor from a Vector<U, N>
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
-    template <typename U>
-    Vector(const Vector<U, N>& x) : Vector{x, IS{}} {}
+    template <typename U, size_t... Is>
+    constexpr Vector(const Vector<U, N, std::index_sequence<Is...>>& x) : e_{T(x.e(Is))...} {}
     // Templated conversion constructor from a Vector<U, N-1> and a scalar V
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <typename U, typename V, size_t... Is>
@@ -113,14 +115,16 @@ public:
     T* data() { return e_; }
     const T* data() const { return e_; }
 
-    template <typename U>
-    Vector& operator+=(const Vector<U, N>& x) {
-        return plusEquals(x, IS{});
+    template <typename U, size_t... Is>
+    Vector& operator+=(const Vector<U, N, std::index_sequence<Is...>>& x) {
+        eval(e_[Is] += x.e(Is)...);
+        return *this;
     }
 
-    template <typename U>
-    Vector& operator-=(const Vector<U, N>& x) {
-        return minusEquals(x, IS{});
+    template <typename U, size_t... Is>
+    Vector& operator-=(const Vector<U, N, std::index_sequence<Is...>>& x) {
+        eval(e_[Is] -= x.e(Is)...);
+        return *this;
     }
 
     template <typename U>
@@ -140,27 +144,9 @@ private:
     // From a single value of type T
     template <size_t... Is>
     explicit constexpr Vector(const T& x, std::index_sequence<Is...>) : e_{((void)Is, x)...} {}
-    // From a Vector<U, N> where U is convertible to T
-    template <typename U, size_t... Is>
-    constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) : e_{T(x.e(Is))...} {}
     // From a const T* of N contiguous elements
     template <size_t... Is>
     explicit Vector(const T* ts, std::index_sequence<Is...>) : e_{ts[Is]...} {}
-
-    template <typename... Ts>
-    static constexpr void eval(Ts&&...) {}
-
-    template <typename U, size_t... Is>
-    Vector& plusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
-        eval(e_[Is] += x.e_[Is]...);
-        return *this;
-    }
-
-    template <typename U, size_t... Is>
-    Vector& minusEquals(const Vector<U, N>& x, std::index_sequence<Is...>) {
-        eval(e_[Is] -= x.e_[Is]...);
-        return *this;
-    }
 
     template <typename U, size_t... Is>
     Vector& multiplyEquals(U x, std::index_sequence<Is...>) {
@@ -194,19 +180,20 @@ using Vec4i = Vector<int, 4>;
 template<typename T>
 struct IsVector : std::false_type {};
 
-template<typename T, size_t N, typename IS>
-struct IsVector<Vector<T, N, IS>> : std::true_type {};
+template<typename T, size_t N>
+struct IsVector<Vector<T, N, std::make_index_sequence<N>>> : std::true_type {};
 
 template<typename T>
 struct VectorDimension;
 
-template<typename T, size_t N, typename IS>
-struct VectorDimension<Vector<T, N, IS>> : std::integral_constant<size_t, N> {};
+template <typename T, size_t N>
+struct VectorDimension<Vector<T, N, std::make_index_sequence<N>>>
+    : std::integral_constant<size_t, N> {};
 
 template<typename T>
 struct VectorElementType;
 
-template<typename T, size_t N, typename IS>
+template <typename T, size_t N, typename IS>
 struct VectorElementType<Vector<T, N, IS>> {
     using type = T;
 };
