@@ -328,8 +328,7 @@ constexpr auto basisVector(size_t i) {
 }
 
 // Apply a function F(T, U) memberwise to elements of Vector x with fixed bound arg U y and return a
-// Vector of the results. This could be implemented in terms of memberwise with a lambda or
-// std::bind but can't use std::bind or lambdas in a constexpr function.
+// Vector of the results. 
 // e.g. memberwiseBoundArg(op*, Vex3f x, float y) == Vec3f{x.x*y, x.y*y, x.z*y}
 template <typename F, typename T, typename U, size_t N, size_t... Is>
 constexpr auto memberwiseBoundArg(F&& f, const Vector<T, N, std::index_sequence<Is...>>& x, U&& y) {
