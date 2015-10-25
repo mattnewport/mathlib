@@ -16,12 +16,11 @@ struct separator {
 const char* const separator<char>::value = ", ";
 const wchar_t* const separator<wchar_t>::value = L", ";
 
-template <typename T, size_t N, typename IS, typename CharT>
-auto& operator<<(std::basic_ostream<CharT>& os, const Vector<T, N, IS>& x) {
-    using namespace std;
-    copy(cbegin(x), prev(cend(x)), ostream_iterator<T, CharT>{os << "{", separator<CharT>::value});
-    copy(prev(cend(x)), cend(x), ostream_iterator<T, CharT>{os});
-    return os << "}";
+template <typename T, size_t N, typename CharT>
+auto& operator<<(std::basic_ostream<CharT>& os, const Vector<T, N>& x) {
+    std::copy(x.begin(), std::prev(x.end()),
+              std::ostream_iterator<T, CharT>{os << "{", separator<CharT>::value});
+    return os << *std::prev(x.end()) << "}";
 }
 
 template <typename T, size_t M, size_t N, typename CharT>

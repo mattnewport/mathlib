@@ -18,10 +18,10 @@ public:
     using Vector::Vector;
 
     // Row and column access
-    Vector<T, N>& operator[](size_t i) { return Vector::e(i); }
-    const Vector<T, N>& operator[](size_t i) const { return Vector::e(i); }
-    Vector<T, N>& row(size_t i) { return Vector::e(i); }
-    const Vector<T, N>& row(size_t i) const { return Vector::e(i); }
+    auto& operator[](size_t i) { return Vector::e(i); }
+    constexpr const auto& operator[](size_t i) const { return Vector::e(i); }
+    auto& row(size_t i) { return Vector::e(i); }
+    constexpr const auto& row(size_t i) const { return Vector::e(i); }
     constexpr auto column(size_t i) const { return columnHelper(i, Vector::is{}); }
 
     // Element access
@@ -36,11 +36,11 @@ public:
     auto end() const { return std::end(Vector::e(M - 1)); }
 
     // Return a pointer to the raw underlying contiguous element data.
-    const float* data() const { return row(0).data(); }
+    constexpr auto data() const { return row(0).data(); }
 
     // Access the matrix as a const Vector<Vector<T, N>, M>& - not really intended for end user use
     // but helpful to implement freestanding operators and could be useful to users.
-    const auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
+    constexpr auto& rows() const { return static_cast<const Vector<Vector<T, N>, M>&>(*this); }
 
     // @= operators - just delegate to Vector via rows() for implementations
     template <typename U>

@@ -113,7 +113,7 @@ public:
 
     // Return a pointer to the raw underlying contiguous element data.
     T* data() { return e_; }
-    const T* data() const { return e_; }
+    constexpr const T* data() const { return e_; }
 
     template <typename U, size_t... Is>
     Vector& operator+=(const Vector<U, N, std::index_sequence<Is...>>& x) {
@@ -146,7 +146,7 @@ private:
     explicit constexpr Vector(const T& x, std::index_sequence<Is...>) : e_{((void)Is, x)...} {}
     // From a const T* of N contiguous elements
     template <size_t... Is>
-    explicit Vector(const T* ts, std::index_sequence<Is...>) : e_{ts[Is]...} {}
+    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) : e_{ts[Is]...} {}
 
     template <typename U, size_t... Is>
     Vector& multiplyEquals(U x, std::index_sequence<Is...>) {
@@ -193,8 +193,8 @@ struct VectorDimension<Vector<T, N, std::make_index_sequence<N>>>
 template<typename T>
 struct VectorElementType;
 
-template <typename T, size_t N, typename IS>
-struct VectorElementType<Vector<T, N, IS>> {
+template <typename T, size_t N>
+struct VectorElementType<Vector<T, N>> {
     using type = T;
 };
 
@@ -205,20 +205,51 @@ using VectorElementType_t = typename VectorElementType<T>::type;
 namespace detail {
 
 // MNTODO: replace this fold machinery with C++17 fold expressions once available
-// Manually expanded for first few arguments to reduce inlining depth.
+
 template <typename F, typename T>
-constexpr auto foldImpl(F, T t) {
+constexpr auto foldImpl(F&& f, T&& t) {
     return t;
 }
 
-template <typename F, typename T>
-constexpr auto foldImpl(F f, T x, T y) {
-    return f(x, y);
+template <typename F, typename T, typename... Ts>
+constexpr auto foldImpl(F&& f, T&& t, Ts&&... ts) {
+    return f(std::forward<T>(t), foldImpl(std::forward<F>(f), std::forward<Ts>(ts)...));
 }
 
-template <typename F, typename T, typename... Ts>
-constexpr auto foldImpl(F f, T x, T y, Ts... ts) {
-    return f(x, foldImpl(f, y, ts...));
+// manually handle plus to reduce inlining depth for common dot product usage
+template<typename T>
+constexpr auto foldPlusImpl() {
+    return T(0);
+}
+
+template<typename T>
+constexpr auto foldPlusImpl(T t) {
+    return t;
+}
+
+template<typename T>
+constexpr auto foldPlusImpl(T t0, T t1) {
+    return t0 + t1;
+}
+
+template<typename T>
+constexpr auto foldPlusImpl(T t0, T t1, T t2) {
+    return t0 + t1 + t2;
+}
+
+template<typename T>
+constexpr auto foldPlusImpl(T t0, T t1, T t2, T t3) {
+    return t0 + t1 + t2 + t3;
+}
+
+template<typename T, typename... Ts>
+constexpr auto foldPlusImpl(T t0, T t1, T t2, T t3, T t4, Ts... ts) {
+    return t0 + t1 + t2 + t3 + t4 + foldPlusImpl(ts...);
+}
+
+template<typename T, size_t N, size_t... Is>
+constexpr auto foldPlus(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return foldPlusImpl(x.e(Is)...);
 }
 
 template <typename T, size_t N, size_t... Js>
@@ -305,11 +336,11 @@ constexpr auto memberwiseBoundArg(F&& f, const Vector<T, N, std::index_sequence<
     return Vector<V, N>{f(x.e(Is), y)...};
 }
 
-// Fold a function F(T, T) over elements of Vector v.
-// e.g. fold(op+, Vec3f x) == float{x.x + x.y + x.z}
-template <typename F, typename T, size_t N, size_t... Is>
-constexpr auto fold(F f, const Vector<T, N, std::index_sequence<Is...>>& v) {
-    return detail::foldImpl(f, v[Is]...);
+// Fold a function F(T, U) over elements of Vector<U, N> v.
+// e.g. fold(op+, 0.0f, Vec3f x) == float{x.x + x.y + x.z}
+template <typename F, typename T, typename U, size_t N, size_t... Is>
+constexpr auto fold(F f, T t, const Vector<U, N, std::index_sequence<Is...>>& v) {
+    return detail::foldImpl(f, t, v[Is]...);
 }
 
 // Returns a tuple of the elements of Vector a, used to implement operators but also potentially
@@ -320,9 +351,10 @@ constexpr auto asTuple(const Vector<T, N, std::index_sequence<Is...>>& a) {
 }
 
 // standard operators and vector specific functions (dot() etc.)
-template <typename T, typename U, size_t N, typename IS>
-constexpr bool operator==(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
-    return asTuple(a) == asTuple(b);
+template <typename T, typename U, size_t N, size_t... Is>
+constexpr bool operator==(const Vector<T, N, std::index_sequence<Is...>>& a,
+                          const Vector<U, N>& b) {
+    return fold(std::logical_and<>{}, true, Vector<bool, N>{a.e(Is) == b.e(Is)...});
 }
 
 template <typename T, typename U, size_t N, typename IS>
@@ -381,7 +413,7 @@ constexpr auto memberwiseMultiply(const Vector<T, N, std::index_sequence<Is...>>
 template <typename T, typename U, size_t N, size_t... Is>
 constexpr auto dot(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<U, N>& y) {
     using V = decltype(std::declval<T>() * std::declval<U>());
-    return fold(std::plus<>{}, Vector<V, N>{x.e(Is) * y.e(Is)...});
+    return detail::foldPlus(Vector<V, N>{x.e(Is) * y.e(Is)...});
 }
 
 template <typename T, typename U, size_t N>
