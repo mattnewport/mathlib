@@ -118,7 +118,7 @@ public:
         Assert::IsTrue(v0.x() == 1.0f && v0.y() == 1.0f && v0.z() == 1.0f && v0.w() == 1.0f);
         constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
         Assert::IsTrue(v1.x() == 1.0f && v1.y() == 2.0f && v1.z() == 3.0f && v1.w() == 4.0f);
-        Assert::IsTrue(v1.e(0) == 1.0f && v1.e(1) == 2.0f && v1.e(2) == 3.0f && v1.e(3) == 4.0f);
+        Assert::IsTrue(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
         constexpr auto v2 = v1;
         Assert::IsTrue(v2 == v1);
         Assert::IsTrue(v0 != v1);
@@ -138,7 +138,7 @@ public:
 
         const Vector<Vec2f, 2> v7{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
         Assert::IsTrue(std::equal(
-            std::begin(v7.e(0)), std::end(v7.e(1)),
+            std::begin(v7[0]), std::end(v7[1]),
             stdext::make_unchecked_array_iterator(std::begin({1.0f, 2.0f, 3.0f, 4.0f}))));
 
         const auto v8 = Vec3f{v6, 3.0f};

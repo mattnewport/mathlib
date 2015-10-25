@@ -18,25 +18,25 @@ public:
     using Vector::Vector;
 
     // Row and column access
-    auto& operator[](size_t i) { return Vector::e(i); }
-    constexpr const auto& operator[](size_t i) const { return Vector::e(i); }
-    auto& row(size_t i) { return Vector::e(i); }
-    constexpr const auto& row(size_t i) const { return Vector::e(i); }
+    auto& operator[](size_t i) { return e_[i]; }
+    constexpr const auto& operator[](size_t i) const { return e_[i]; }
+    auto& row(size_t i) { return e_[i]; }
+    constexpr const auto& row(size_t i) const { return return e_[i]; }
     constexpr auto column(size_t i) const { return columnHelper(i, Vector::is{}); }
 
     // Element access
-    T& e(size_t r, size_t c) { return Vector::e(r).e(c); }
-    constexpr const T& e(size_t r, size_t c) const { return Vector::e(r).e(c); }
+    T& e(size_t r, size_t c) { return row(r)[c]; }
+    constexpr const T& e(size_t r, size_t c) const { return e_[r][c]; }
 
     // These begin() and end() functions allow a Matrix to be used like a container for element
     // access. Not generally recommended but sometimes useful.
-    auto begin() { return std::begin(Vector::e(0)); }
-    auto end() { return std::end(Vector::e(M - 1)); }
-    auto begin() const { return std::begin(Vector::e(0)); }
-    auto end() const { return std::end(Vector::e(M - 1)); }
+    auto begin() { return std::begin(e_[0]); }
+    auto end() { return std::end(e_[M - 1]); }
+    auto begin() const { return std::begin(e_[0]); }
+    auto end() const { return std::end(e_[M - 1]); }
 
     // Return a pointer to the raw underlying contiguous element data.
-    constexpr auto data() const { return row(0).data(); }
+    constexpr auto data() const { return e_[0].data(); }
 
     // Access the matrix as a const Vector<Vector<T, N>, M>& - not really intended for end user use
     // but helpful to implement freestanding operators and could be useful to users.
@@ -68,7 +68,7 @@ private:
     auto& rows() { return static_cast<Vector<Vector<T, N>, M>&>(*this); }
     template <size_t... Is>
     constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const {
-        return Vector<T, M>{Vector::e(Is).e(n)...};
+        return Vector<T, M>{e_[Is][n]...};
     }
 };
 
@@ -168,7 +168,7 @@ constexpr auto operator+(const Matrix<T, M, N>& x) {
 
 template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
-    return Matrix<decltype(x.e(0, 0) + y.e(0, 0)), M, N>{x.rows() + y.rows()};
+    return Matrix<decltype(x[0][0] + y[0][0]), M, N>{x.rows() + y.rows()};
 }
 
 template <typename T, size_t M, size_t N>
@@ -178,12 +178,12 @@ constexpr auto operator-(const Matrix<T, M, N>& x) {
 
 template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator-(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) {
-    return Matrix<decltype(x.e(0, 0) - y.e(0, 0)), M, N>{x.rows() - y.rows()};
+    return Matrix<decltype(x[0][0] - y[0][0]), M, N>{x.rows() - y.rows()};
 }
 
 template <typename T, typename U, size_t M, size_t N>
 constexpr auto operator*(const Matrix<T, M, N>& x, U s) {
-    return Matrix<decltype(x.e(0, 0) * s), M, N>{x.rows() * s};
+    return Matrix<decltype(x[0][0] * s), M, N>{x.rows() * s};
 }
 
 template <typename T, typename U, size_t M, size_t N>
