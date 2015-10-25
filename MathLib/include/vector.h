@@ -221,11 +221,6 @@ constexpr auto foldImpl(F f, T x, T y, Ts... ts) {
     return f(x, foldImpl(f, y, ts...));
 }
 
-template <typename F, typename T, size_t N, size_t... Is>
-constexpr auto fold(F f, const Vector<T, N, std::index_sequence<Is...>>& v) {
-    return foldImpl(f, v[Is]...);
-}
-
 template <typename T, size_t N, size_t... Js>
 constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) {
     return Vector<T, N>{T(i == Js)...};
@@ -239,11 +234,6 @@ constexpr auto divide(const Vector<T, N, std::index_sequence<Is...>>& a, U s, in
 template <typename T, typename U, size_t N, size_t... Is>
 constexpr auto divide(const Vector<T, N, std::index_sequence<Is...>>& a, U s, floating_point_tag) {
     return a * (T{1} / s);
-}
-
-template <typename T, size_t N, size_t... Is>
-constexpr auto asTuple(const Vector<T, N, std::index_sequence<Is...>>& a) {
-    return std::make_tuple(a[Is]...);
 }
 
 template <size_t I, size_t J>
@@ -299,9 +289,10 @@ constexpr auto basisVector(size_t i) {
     return detail::basisVectorImpl<T, N>(i, std::make_index_sequence<N>{});
 }
 
-template<typename V>
+template <typename V>
 constexpr auto basisVector(size_t i) {
-    return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
+    return detail::basisVectorImpl<VectorElementType_t<V>, VectorDimension<V>::value>(
+        i, std::make_index_sequence<VectorDimension<V>::value>{});
 }
 
 // Apply a function F(T, U) memberwise to elements of Vector x with fixed bound arg U y and return a
@@ -316,16 +307,16 @@ constexpr auto memberwiseBoundArg(F&& f, const Vector<T, N, std::index_sequence<
 
 // Fold a function F(T, T) over elements of Vector v.
 // e.g. fold(op+, Vec3f x) == float{x.x + x.y + x.z}
-template <typename F, typename T, size_t N, typename IS>
-constexpr auto fold(F f, const Vector<T, N, IS>& v) {
-    return detail::fold(f, v);
+template <typename F, typename T, size_t N, size_t... Is>
+constexpr auto fold(F f, const Vector<T, N, std::index_sequence<Is...>>& v) {
+    return detail::foldImpl(f, v[Is]...);
 }
 
 // Returns a tuple of the elements of Vector a, used to implement operators but also potentially
 // useful on its own.
-template <typename T, size_t N, typename IS>
-constexpr auto asTuple(const Vector<T, N, IS>& a) {
-    return detail::asTuple(a);
+template <typename T, size_t N, size_t... Is>
+constexpr auto asTuple(const Vector<T, N, std::index_sequence<Is...>>& a) {
+    return std::make_tuple(a.e(Is)...);
 }
 
 // standard operators and vector specific functions (dot() etc.)
@@ -387,23 +378,24 @@ constexpr auto memberwiseMultiply(const Vector<T, N, std::index_sequence<Is...>>
     return Vector<V, N>{x.e(Is) * y.e(Is)...};
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto dot(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
-    return fold(std::plus<>{}, memberwiseMultiply(a, b));
+template <typename T, typename U, size_t N, size_t... Is>
+constexpr auto dot(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<U, N>& y) {
+    using V = decltype(std::declval<T>() * std::declval<U>());
+    return fold(std::plus<>{}, Vector<V, N>{x.e(Is) * y.e(Is)...});
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr auto operator|(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
+template <typename T, typename U, size_t N>
+constexpr auto operator|(const Vector<T, N>& a, const Vector<U, N>& b) {
     return dot(a, b);
 }
 
-template <typename T, size_t N, typename IS>
-constexpr T magnitude(const Vector<T, N, IS>& a) {
+template <typename T, size_t N>
+constexpr T magnitude(const Vector<T, N>& a) {
     return sqrt(dot(a, a));
 }
 
-template <typename T, size_t N, typename IS>
-constexpr auto normalize(const Vector<T, N, IS>& a) {
+template <typename T, size_t N>
+constexpr auto normalize(const Vector<T, N>& a) {
     return a * (T{1} / magnitude(a));
 }
 
@@ -417,14 +409,14 @@ constexpr auto max(const Vector<T, N, std::index_sequence<Is...>>& x, const Vect
     return Vector<T, N>{std::max(x.e(Is), y.e(Is))...};
 }
 
-template <typename T, size_t N, typename IS>
-inline auto& minElement(const Vector<T, N, IS>& x) {
-    return *std::min_element(std::begin(x), std::end(x));
+template <typename T, size_t N, size_t... Is>
+constexpr auto minElement(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return std::min({x.e(Is)...});
 }
 
-template <typename T, size_t N, typename IS>
-inline auto& maxElement(const Vector<T, N, IS>& x) {
-    return *std::max_element(std::begin(x), std::end(x));
+template <typename T, size_t N, size_t... Is>
+constexpr auto maxElement(const Vector<T, N, std::index_sequence<Is...>>& x) {
+    return std::max({x.e(Is)...});
 }
 
 template <typename T, size_t N, size_t... Is>
@@ -448,8 +440,8 @@ constexpr auto clamp(const Vector<T, N, std::index_sequence<Is...>>& x, const T&
     return Vector<T, N>{clamp(x.e(Is), a, b)...};
 }
 
-template <typename T, typename U, typename IS>
-constexpr auto cross(const Vector<T, 3, IS>& a, const Vector<U, 3, IS>& b) {
+template <typename T, typename U>
+constexpr auto cross(const Vector<T, 3>& a, const Vector<U, 3>& b) {
     return memberwiseMultiply(a.yzx(), b.zxy()) - memberwiseMultiply(a.zxy(), b.yzx());
 }
 
