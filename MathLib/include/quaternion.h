@@ -13,7 +13,6 @@ public:
     constexpr auto y() const { return Vector::y(); }
     constexpr auto z() const { return Vector::z(); }
     constexpr auto w() const { return Vector::w(); }
-    constexpr auto xyz() const { return Vector::xyz(); }
     constexpr auto v() const { return Vector::xyz(); }
     constexpr auto s() const { return Vector::w(); }
 
@@ -64,7 +63,7 @@ constexpr auto operator-(const Quaternion<T>& x, const Quaternion<U>& y) {
 // operator~() is used for Quaternion conjugate, seems less potential for confusion than op*()
 template<typename T>
 constexpr auto operator~(const Quaternion<T>& x) {
-    return Quaternion<T>{-x.xyz(), x.w()};
+    return Quaternion<T>{-x.v(), x.s()};
 }
 
 template <typename T, typename U>

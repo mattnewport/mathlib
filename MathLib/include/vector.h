@@ -61,6 +61,10 @@ public:
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <typename U, size_t... Is>
     constexpr explicit Vector(const Vector<U, N, std::index_sequence<Is...>>& x) : e_{T(x.e_[Is])...} {}
+    // Templated conversion constructor from a Vector<T, M> with M > N where we take the first N
+    // elements
+    template <size_t M, size_t... Is, typename = std::enable_if_t<(M > N)>>
+    explicit Vector(const Vector<T, M, std::index_sequence<Is...>>& x) : Vector{x.e_, IS{}} {}
     // Templated conversion constructor from a Vector<U, N-1> and a scalar V
     // Question: do we want to allow narrowing conversions? Currently allowed but maybe a bad idea?
     template <size_t... Is>
@@ -324,11 +328,6 @@ constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) {
     return Vector<T, N>{T(i == Js)...};
 }
 
-template <typename T, size_t N, size_t... Js>
-constexpr auto zeroVectorImpl(std::index_sequence<Js...>) {
-    return Vector<T, N>{(void(Js), T(0))...};
-}
-
 template <typename T, typename U, size_t N, size_t... Is>
 constexpr auto divide(const Vector<T, N, std::index_sequence<Is...>>& a, U s, integral_tag) {
     return memberwiseBoundArg(std::divides<>{}, a, s);
@@ -358,12 +357,12 @@ struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
 // e.g. zeroVector<Vec3f>() = Vec3f{0.0f, 0.0f, 0.0f};
 template <typename T, size_t N>
 constexpr auto zeroVector() {
-    return detail::zeroVectorImpl<T, N>(std::make_index_sequence<N>{});
+    return Vector<T, N>{};
 }
 
-template<typename V>
+template <typename V>
 constexpr auto zeroVector() {
-    return zeroVector<VectorElementType_t<V>, VectorDimension<V>::value>();
+    return Vector<VectorElementType_t<V>, VectorDimension<V>::value>{};
 }
 
 // Returns a basis vector with 1 in the specified position and 0 elsewhere,

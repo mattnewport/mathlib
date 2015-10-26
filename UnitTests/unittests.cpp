@@ -159,8 +159,8 @@ public:
 
         auto pv = new(&v14) Vec3f;
         Assert::AreEqual(*pv, v12);
-        pv = new(&v14) Vec3f{};
-        Assert::AreEqual(*pv, zeroVector<Vec3f>());
+        pv = new(&v14) Vec3f{}; // check value initialization syntax works
+        Assert::AreEqual(*pv, Vec3f{0.0f, 0.0f, 0.0f});
 
         auto v15 = basisVector<float, 3>(Y);
         Assert::AreEqual(v15, Vec3f{0.0f, 1.0f, 0.0f});
@@ -182,6 +182,9 @@ public:
 
         const auto v20 = basisVector<Vec4f>(Z);
         Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
+
+        const auto v21 = Vec3f{v18};
+        Assert::AreEqual(v21, Vec3f{1.0f, 2.0f, 3.0f});
     }
 
     TEST_METHOD(TestAdd) {
@@ -500,7 +503,7 @@ public:
 TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionValueInit) {
         const auto q0 = Quatf{};
-        Assert::AreEqual(q0.xyz(), zeroVector<Vec3f>());
+        Assert::AreEqual(q0.v(), zeroVector<Vec3f>());
     }
 
     TEST_METHOD(TestQuaternionBasics) {
