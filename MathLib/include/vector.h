@@ -28,6 +28,8 @@ struct floating_point_tag {};
 template <typename T>
 using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_tag, integral_tag>;
 
+enum VectorComponents { X = 0, Y = 1, Z = 2, W = 3 };
+
 // IS defaulted template argument is an implementation trick to make it possible to write operators
 // that can directly deduce an index sequence and therefore be implemented without calling a helper
 // function. This both reduces the amount of boilerplate code that needs to be written and reduces
@@ -197,6 +199,20 @@ public:
         return x.dotImpl(y);
     }
 
+    // Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
+    // determines the swizzle pattern. Output Vector dimension is determined by the number of swizzle
+    // constants,
+    // e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f
+    // Special case for a single swizzle constant: return value is scalar T rather than Vector<T, 1>,
+    // e.g. result of swizzle<X>(Vec4f) is a float not a Vector<float, 1>
+    template <size_t... Is>
+    friend constexpr auto swizzle(const Vector& x) {
+        static_assert(N > detail::Max<Is...>::value,
+                      "All swizzle args must be <= Vector dimension.");
+        using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
+        return ReturnType{x.e_[Is]...};
+    }
+
 protected:
     T e_[N];
 
@@ -231,7 +247,7 @@ private:
     // manually handle dot for 1 <= N <= 4 to reduce inlining depth for this common operation
     template<typename U, size_t M>
     constexpr auto dotImpl(const Vector<U, M>& x) const {
-        return fold(std::plus<>{}, decltype(e_[0] * x.e_[0])(0), this->memberwiseMultiply(x));
+        return fold(std::plus<>{}, decltype(e_[0] * x.e_[0])(0), memberwiseMultiply(x));
     }
 
     template<typename U>
@@ -331,24 +347,6 @@ template <size_t I, size_t... Is>
 struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
 
 }  // namespace detail
-
-// Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
-// determines the swizzle pattern. Output Vector dimension is determined by the number of swizzle
-// constants,
-// e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f
-// Special case for a single swizzle constant: return value is scalar T rather than Vector<T, 1>,
-// e.g. result of swizzle<X>(Vec4f) is a float not a Vector<float, 1>
-enum SwizzleConstants { X = 0, Y = 1, Z = 2, W = 3 };
-
-template <size_t... Is, typename V>
-constexpr auto swizzle(const V& x) {
-    static_assert(IsVector<V>::value, "Argument to swizzle() must be a Vector.");
-    static_assert(VectorDimension<V>::value > detail::Max<Is...>::value,
-                  "All swizzle args must be <= Vector dimension.");
-    using T = VectorElementType_t<V>;
-    using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
-    return ReturnType{x[Is]...};
-}
 
 // Returns a vector of all zeros
 // e.g. zeroVector<float, 3>() == Vec3f{0.0f, 0.0f, 0.0f}
