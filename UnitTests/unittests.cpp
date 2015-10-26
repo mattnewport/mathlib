@@ -176,6 +176,12 @@ public:
         v18.z() = 3.0f;
         v18.w() = 4.0f;
         Assert::AreEqual(v18, Vec4f{1.0f, 2.0f, 3.0f, 4.0f});
+
+        constexpr auto v19 = zeroVector<Vec4f>();
+        static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
+
+        const auto v20 = basisVector<Vec4f>(Z);
+        Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
     }
 
     TEST_METHOD(TestAdd) {

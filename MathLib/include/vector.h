@@ -324,6 +324,11 @@ constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) {
     return Vector<T, N>{T(i == Js)...};
 }
 
+template <typename T, size_t N, size_t... Js>
+constexpr auto zeroVectorImpl(std::index_sequence<Js...>) {
+    return Vector<T, N>{(void(Js), T(0))...};
+}
+
 template <typename T, typename U, size_t N, size_t... Is>
 constexpr auto divide(const Vector<T, N, std::index_sequence<Is...>>& a, U s, integral_tag) {
     return memberwiseBoundArg(std::divides<>{}, a, s);
@@ -353,7 +358,7 @@ struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
 // e.g. zeroVector<Vec3f>() = Vec3f{0.0f, 0.0f, 0.0f};
 template <typename T, size_t N>
 constexpr auto zeroVector() {
-    return Vector<T, N>{T(0)};
+    return detail::zeroVectorImpl<T, N>(std::make_index_sequence<N>{});
 }
 
 template<typename V>
@@ -371,8 +376,7 @@ constexpr auto basisVector(size_t i) {
 
 template <typename V>
 constexpr auto basisVector(size_t i) {
-    return detail::basisVectorImpl<VectorElementType_t<V>, VectorDimension<V>::value>(
-        i, std::make_index_sequence<VectorDimension<V>::value>{});
+    return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
 }
 
 // Fold a function F(T, U) over elements of Vector<U, N> v.
