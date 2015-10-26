@@ -192,9 +192,9 @@ public:
         return Vector<decltype(f(x.e_[0], y)), N>{f(x.e_[Is], y)...};
     }
 
-    // manually handle folding plus to reduce inlining depth for common dot product usage
-    friend constexpr auto foldPlus(const Vector& x) {
-        return x.foldPlusImpl<N>();
+    template<typename U>
+    friend constexpr auto dot(const Vector& x, const Vector<U, N>& y) {
+        return x.dotImpl(y);
     }
 
 protected:
@@ -228,26 +228,30 @@ private:
         return *this;
     }
 
-    // manually handle folding plus to reduce inlining depth for common dot product usage
-    template<size_t M>
-    constexpr auto foldPlusImpl() const {
-        return e_[M - 1] + foldPlusImpl<M>();
+    // manually handle dot for 1 <= N <= 4 to reduce inlining depth for this common operation
+    template<typename U, size_t M>
+    constexpr auto dotImpl(const Vector<U, M>& x) const {
+        return fold(std::plus<>{}, decltype(e_[0] * x.e_[0])(0), this->memberwiseMultiply(x));
     }
-    template<>
-    constexpr auto foldPlusImpl<1>() const {
-        return e_[0];
+
+    template<typename U>
+    constexpr auto dotImpl(const Vector<U, 1>& x) const {
+        return e_[0] * x.e_[0]
     }
-    template<>
-    constexpr auto foldPlusImpl<2>() const {
-        return e_[0] + e_[1];
+
+    template<typename U>
+    constexpr auto dotImpl(const Vector<U, 2>& x) const {
+        return e_[0] * x.e_[0] + e_[1] * x.e_[1];
     }
-    template<>
-    constexpr auto foldPlusImpl<3>() const {
-        return e_[0] + e_[1] + e_[2];
+
+    template<typename U>
+    constexpr auto dotImpl(const Vector<U, 3>& x) const {
+        return e_[0] * x.e_[0] + e_[1] * x.e_[1] + e_[2] * x.e_[2];
     }
-    template<>
-    constexpr auto foldPlusImpl<4>() const {
-        return e_[0] + e_[1] + e_[2] + e_[3];
+
+    template<typename U>
+    constexpr auto dotImpl(const Vector<U, 4>& x) const {
+        return e_[0] * x.e_[0] + e_[1] * x.e_[1] + e_[2] * x.e_[2] + e_[3] * x.e_[3];
     }
 };
 
@@ -394,11 +398,6 @@ constexpr auto operator*(T s, const Vector<U, N>& a) {
 template <typename T, typename U, size_t N>
 constexpr auto operator/(const Vector<T, N>& a, U s) {
     return detail::divide(a, s, tag<U>{});
-}
-
-template <typename T, typename U, size_t N, size_t... Is>
-constexpr auto dot(const Vector<T, N, std::index_sequence<Is...>>& x, const Vector<U, N>& y) {
-    return foldPlus(x.memberwiseMultiply(y));
 }
 
 template <typename T, typename U, size_t N>

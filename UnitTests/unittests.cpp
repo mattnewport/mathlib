@@ -239,6 +239,10 @@ public:
         Assert::AreEqual(s1, 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0);
         static_assert(s1 == 1.0f * 2.0 + 2.0f * 4.0 + 3.0f * 6.0 + 4.0f * 8.0, "");
         Assert::AreEqual(dot(v0, v1), v0 | v1);
+        constexpr Vector<float, 5> v4{v0, 5.0f};
+        constexpr Vector<float, 5> v5{v1, 10.0f};
+        constexpr auto s2 = dot(v4, v5);
+        Assert::AreEqual(s2, 1.0f * 2.0f + 2.0f * 4.0f + 3.0f * 6.0f + 4.0f * 8.0f + 5.0f * 10.0f);
     }
 
     TEST_METHOD(TestDivide) {
