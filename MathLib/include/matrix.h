@@ -233,8 +233,8 @@ inline auto translationMat4f(const Vec3f& t) {
 inline auto rotationYMat4f(float angle) {
     const auto sinAngle = std::sin(angle);
     const auto cosAngle = std::cos(angle);
-    return Mat4f{Vec4f{cosAngle, 0, -sinAngle, 0}, basisVector<Vec4f>(Y),
-                 Vec4f{sinAngle, 0, cosAngle, 0}, basisVector<Vec4f>(W)};
+    return Mat4f{Vec4f{cosAngle, 0.0f, -sinAngle, 0.0f}, basisVector<Vec4f>(Y),
+                 Vec4f{sinAngle, 0.0f, cosAngle, 0.0f}, basisVector<Vec4f>(W)};
 }
 
 // up should be a normalized direction vector
@@ -250,10 +250,10 @@ inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) {
 
 template <typename T>
 inline auto Mat4FromQuat(const Quaternion<T>& q) {
-    const auto sq = memberwiseMultiply(q.v(), q.v());
+    const auto sq = q.v().memberwiseMultiply(q.v());
     const auto sq2 = decltype(q.v()){1} - times2(sq.yzx() + sq.zxy());
     const auto ws = times2(q.v() * q.w());
-    const auto x = times2(memberwiseMultiply(q.v(), q.v().yzx()));
+    const auto x = times2(q.v().memberwiseMultiply(q.v().yzx()));
     using RowVec = Vector<T, 4>;
     return Matrix<T, 4, 4>{RowVec{sq2.x(), x.x() + ws.z(), x.z() - ws.y(), T(0)},
                            RowVec{x.x() - ws.z(), sq2.y(), x.y() + ws.x(), T(0)},

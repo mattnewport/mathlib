@@ -124,9 +124,6 @@ public:
         Assert::IsTrue(v0 != v1);
         Assert::IsFalse(v2 != v1);
         Assert::IsFalse(v0 == v1);
-        Assert::IsTrue(v0 < v1);
-        Assert::IsFalse(v1 < v0);
-        Assert::IsFalse(v0 < v0);
         constexpr Vector<double, 4> v3{1.0, 2.0, 3.0, 4.0};
         Assert::IsTrue(v1 == v3);
         const Vector<double, 4> v4{v1};
@@ -153,9 +150,9 @@ public:
         constexpr auto v10{v9};
 
         const auto v11 = Vec3f{1};
-        const auto v12 = Vec3f{1, 2, 3};
+        const auto v12 = Vec3f{1.0f, 2.0f, 3.0f};
         const auto v13 = Vec3i{1, 2, 3};
-        Vec3f v14 = v13;
+        Vec3f v14 = Vec3f{ v13 };
 
         Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
         Assert::IsTrue(-v14 + +v14 == zeroVector<Vec3f>());
@@ -166,7 +163,7 @@ public:
         Assert::AreEqual(*pv, zeroVector<Vec3f>());
 
         auto v15 = basisVector<float, 3>(Y);
-        Assert::AreEqual(v15, Vec3f{0, 1, 0});
+        Assert::AreEqual(v15, Vec3f{0.0f, 1.0f, 0.0f});
         auto v16 = basisVector<Vec3f>(Y);
         Assert::AreEqual(v16, v15);
 
@@ -178,7 +175,7 @@ public:
         v18.y() = 2.0f;
         v18.z() = 3.0f;
         v18.w() = 4.0f;
-        Assert::AreEqual(v18, Vec4f{ 1,2,3,4 });
+        Assert::AreEqual(v18, Vec4f{1.0f, 2.0f, 3.0f, 4.0f});
     }
 
     TEST_METHOD(TestAdd) {
@@ -187,8 +184,11 @@ public:
         constexpr auto v2 = v0 + v1;
         Assert::AreEqual(Vec4f{3.0f, 6.0f, 9.0f, 12.0f}, v2);
         constexpr Vector<double, 4> v3{2.0, 4.0, 6.0, 8.0};
+        static_assert(std::is_convertible<float, double>::value, "");
+        static_assert(std::is_convertible<double, float>::value, "");
         constexpr auto v4 = v0 + v3;
-        Assert::AreEqual(v4, Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
+        constexpr auto vvv = v3 + v0;
+        Assert::IsTrue(v4 == Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
 
         auto v5 = v0;
         v5 += v1;
@@ -446,7 +446,7 @@ public:
     }
 
     TEST_METHOD(TestMat4FromQuat) {
-        const auto axis = normalize(Vec3f{ 1, 2, 3 });
+        const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
         const auto q0 = fromAxisAngle(axis, angle);
         const auto m0 = Mat4FromQuat(q0);
@@ -477,8 +477,8 @@ public:
     }
 
     TEST_METHOD(TestLookAtRhMat4f) {
-        const auto eyePos = Vec3f{1, 2, 3};
-        const auto at = Vec3f{4, 5, 6};
+        const auto eyePos = Vec3f{1.0f, 2.0f, 3.0f};
+        const auto at = Vec3f{4.0f, 5.0f, 6.0f};
         const auto up = basisVector<Vec3f>(Y);
         const auto m0 = lookAtRhMat4f(eyePos, at, up);
         const auto xmm0 = DirectX::XMMatrixLookAtRH(
@@ -496,7 +496,7 @@ TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionBasics) {
         const auto q0 = Quatf{Vec3f{1.0f, 2.0f, 3.0f}, 4.0f};
         const auto q1 = Quatf{q0};
-        Assert::IsTrue(q0.v() == Vec3f{1, 2, 3} && q0.s() == 4.0f);
+        Assert::IsTrue(q0.v() == Vec3f{1.0f, 2.0f, 3.0f} && q0.s() == 4.0f);
         Assert::IsTrue(q0.x() == q0.v().x() && q0.y() == q0.v().y() && q0.z() == q0.v().z() &&
                        q0.w() == q0.s());
         auto q2 = Quatf{};
@@ -508,7 +508,7 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionFromAxisAngle) {
-        const auto axis = normalize(Vec3f{1, 2, 3});
+        const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
         const auto q0 = fromAxisAngle(axis, angle);
         const auto xmAxis = toXmVector(axis);
@@ -517,12 +517,12 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionVectorRotate) {
-        const auto axis = normalize(Vec3f{1, 2, 3});
+        const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
         const auto q0 = fromAxisAngle(axis, angle);
         const auto xmAxis = toXmVector(axis);
         const auto xmq0 = XMQuaternionRotationAxis(xmAxis, angle);
-        const auto v0 = Vec3f{4, 5, 6};
+        const auto v0 = Vec3f{4.0f, 5.0f, 6.0f};
         const auto xmv0 = toXmVector(v0);
         const auto v1 = rotate(v0, q0);
         const auto xmv1 = XMVector3Rotate(xmv0, xmq0);
@@ -530,7 +530,7 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionNorm) {
-        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q0 = Quatf{1.0f, 2.0f, 3.0f, 4.0f};
         const auto s0 = norm(q0);
         const auto xq0 = toXmVector(q0);
         const auto xs0 = XMQuaternionLength(xq0);
@@ -538,8 +538,8 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionAdd) {
-        const auto q0 = Quatf{1, 2, 3, 4};
-        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q0 = Quatf{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto q1 = Quatf{5.0f, 6.0f, 7.0f, 8.0f};
         const auto q2 = q0 + q1;
         const auto xq0 = toXmVector(q0);
         const auto xq1 = toXmVector(q1);
@@ -548,8 +548,8 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionSubtract) {
-        const auto q0 = Quatf{1, 2, 3, 4};
-        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q0 = Quatf{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto q1 = Quatf{5.0f, 6.0f, 7.0f, 8.0f};
         const auto q2 = q1 - q0;
         const auto xq0 = toXmVector(q0);
         const auto xq1 = toXmVector(q1);
@@ -558,15 +558,15 @@ TEST_CLASS(QuaternionUnitTests) {
     }
 
     TEST_METHOD(TestQuaternionConjugate) {
-        const auto q0 = Quatf{1, 2, 3, 4};
+        const auto q0 = Quatf{1.0f, 2.0f, 3.0f, 4.0f};
         const auto q1 = ~q0;
         const auto xq1 = XMQuaternionConjugate(toXmVector(q0));
         Assert::IsTrue(memcmp(&xq1, &q1, sizeof(q1)) == 0);
     }
 
     TEST_METHOD(TestQuaternionMultiply) {
-        const auto q0 = Quatf{1, 2, 3, 4};
-        const auto q1 = Quatf{5, 6, 7, 8};
+        const auto q0 = Quatf{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto q1 = Quatf{5.0f, 6.0f, 7.0f, 8.0f};
         const auto q2 = q0 * q1;
         const auto xq0 = toXmVector(q0);
         const auto xq1 = toXmVector(q1);
