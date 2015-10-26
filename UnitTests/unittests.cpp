@@ -22,8 +22,8 @@ using namespace mathlib;
 using namespace std::literals;
 
 namespace Microsoft { namespace VisualStudio { namespace CppUnitTestFramework {
-template <typename T, size_t N, typename IS>
-auto ToString(const Vector<T, N, IS>& x) { RETURN_WIDE_STRING(x); }
+template <typename T, size_t N>
+auto ToString(const Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
 template <typename T, size_t M, size_t N>
 auto ToString(const Matrix<T, M, N>& x) { RETURN_WIDE_STRING(x); }
 template <typename T>

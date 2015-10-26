@@ -22,7 +22,7 @@ public:
     constexpr const auto& operator[](size_t i) const { return e_[i]; }
     auto& row(size_t i) { return e_[i]; }
     constexpr const auto& row(size_t i) const { return return e_[i]; }
-    constexpr auto column(size_t i) const { return columnHelper(i, Vector::is{}); }
+    constexpr auto column(size_t i) const { return columnHelper(i, std::make_index_sequence<M>{}); }
 
     // Element access
     T& e(size_t r, size_t c) { return row(r)[c]; }

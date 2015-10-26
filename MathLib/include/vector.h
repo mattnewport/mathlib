@@ -13,9 +13,8 @@
 
 // This code is very generic and uses multiple layers of function helpers, it compiles down to
 // pretty efficient code in release builds but in debug builds without any inlining it will be
-// pretty inefficient. Using /Ob1
-// http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug builds in Visual Studio will help
-// debug performance a lot.
+// pretty inefficient. Using /Ob1 http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug
+// builds in Visual Studio will help debug performance a lot.
 
 // See this great blog post by Nathan Reed for some discussion of design decisions around vector
 // math libraries. He independently reaches many of the same design decisions that have been made
@@ -28,14 +27,18 @@ struct floating_point_tag {};
 template <typename T>
 using tag = std::conditional_t<std::is_floating_point<T>::value, floating_point_tag, integral_tag>;
 
+// IS defaulted template argument is an implementation trick to make it possible to write operators
+// that can directly deduce an index sequence and therefore be implemented without calling a helper
+// function. This both reduces the amount of boilerplate code that needs to be written and reduces
+// inlining depth which is particulary helpful for performance in debug builds if inlining is not
+// enabled.
 template <typename T, size_t N, typename IS = std::make_index_sequence<N>>
 class Vector {
+    // This helper should not be necessary once we have C++17 fold expressions
     template <typename... Ts>
     static constexpr void eval(Ts&&...) {}
 
 public:
-    using is = IS;
-
     constexpr Vector() = default;
     constexpr Vector(const Vector&) = default;
 
@@ -219,33 +222,28 @@ constexpr auto foldImpl(F&& f, T&& t, Ts&&... ts) {
 
 // manually handle plus to reduce inlining depth for common dot product usage
 template<typename T>
+constexpr auto foldPlus(const Vector<T, 2>& x) {
+    return x[0] + x[1];
+}
+
+template<typename T>
+constexpr auto foldPlus(const Vector<T, 3>& x) {
+    return x[0] + x[1] + x[2];
+}
+
+template<typename T>
+constexpr auto foldPlus(const Vector<T, 4>& x) {
+    return x[0] + x[1] + x[2] + x[3];
+}
+
+template<typename T>
 constexpr auto foldPlusImpl() {
     return T(0);
 }
 
-template<typename T>
-constexpr auto foldPlusImpl(T t) {
-    return t;
-}
-
-template<typename T>
-constexpr auto foldPlusImpl(T t0, T t1) {
-    return t0 + t1;
-}
-
-template<typename T>
-constexpr auto foldPlusImpl(T t0, T t1, T t2) {
-    return t0 + t1 + t2;
-}
-
-template<typename T>
-constexpr auto foldPlusImpl(T t0, T t1, T t2, T t3) {
-    return t0 + t1 + t2 + t3;
-}
-
 template<typename T, typename... Ts>
-constexpr auto foldPlusImpl(T t0, T t1, T t2, T t3, T t4, Ts... ts) {
-    return t0 + t1 + t2 + t3 + t4 + foldPlusImpl(ts...);
+constexpr auto foldPlusImpl(T t, Ts... ts) {
+    return t + foldPlusImpl(ts...);
 }
 
 template<typename T, size_t N, size_t... Is>
@@ -357,23 +355,23 @@ constexpr bool operator==(const Vector<T, N, std::index_sequence<Is...>>& a,
     return fold(std::logical_and<>{}, true, Vector<bool, N>{a[Is] == b[Is]...});
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr bool operator!=(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
+template <typename T, typename U, size_t N>
+constexpr bool operator!=(const Vector<T, N>& a, const Vector<U, N>& b) {
     return !(a == b);
 }
 
-template <typename T, typename U, size_t N, typename IS>
-constexpr bool operator<(const Vector<T, N, IS>& a, const Vector<U, N, IS>& b) {
+template <typename T, typename U, size_t N>
+constexpr bool operator<(const Vector<T, N>& a, const Vector<U, N>& b) {
     return asTuple(a) < asTuple(b);
 }
 
-template<typename T, size_t N, typename IS>
-constexpr auto operator+(const Vector<T, N, IS>& x) {
+template<typename T, size_t N>
+constexpr auto operator+(const Vector<T, N>& x) {
     return x;
 }
 
 template <typename T, typename U, size_t N, size_t... Is>
-constexpr auto operator+(const Vector<T, N, std::index_sequence<Is...>>& a, const Vector<U, N, std::index_sequence<Is...>>& b) {
+constexpr auto operator+(const Vector<T, N, std::index_sequence<Is...>>& a, const Vector<U, N>& b) {
     using V = decltype(std::declval<T>() + std::declval<U>());
     return Vector<V, N>{a[Is] + b[Is]...};
 }
