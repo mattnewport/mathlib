@@ -141,10 +141,10 @@ public:
         const auto v8 = Vec3f{v6, 3.0f};
         Assert::AreEqual(v8, Vec3f{1.0f, 2.0f, 3.0f});
 
-        static_assert(IsVector<Vec4f>::value, "");
-        static_assert(!IsVector<std::tuple<int, int>>::value, "");
-        static_assert(VectorDimension<Vec4f>::value == 4, "");
-        static_assert(std::is_same<float, VectorElementType_t<Vec4f>>::value, "");
+        static_assert(IsVector<Vec4f>{}, "");
+        static_assert(!IsVector<std::tuple<int, int>>{}, "");
+        static_assert(VectorDimension<Vec4f>{} == 4, "");
+        static_assert(std::is_same<float, VectorElementType_t<Vec4f>>{}, "");
 
         constexpr auto& v9 = v1;
         constexpr auto v10{v9};
@@ -193,8 +193,8 @@ public:
         constexpr auto v2 = v0 + v1;
         Assert::AreEqual(Vec4f{3.0f, 6.0f, 9.0f, 12.0f}, v2);
         constexpr Vector<double, 4> v3{2.0, 4.0, 6.0, 8.0};
-        static_assert(std::is_convertible<float, double>::value, "");
-        static_assert(std::is_convertible<double, float>::value, "");
+        static_assert(std::is_convertible<float, double>{}, "");
+        static_assert(std::is_convertible<double, float>{}, "");
         constexpr auto v4 = v0 + v3;
         constexpr auto vvv = v3 + v0;
         Assert::IsTrue(v4 == Vector<double, 4>{3.0, 6.0, 9.0, 12.0});
@@ -206,7 +206,7 @@ public:
         const auto v6 = Vector<Vec2f, 2>{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
         auto v7 = v6;
         v7 += v6;
-        Assert::AreEqual(v7, v6 * 2.0f);
+        Assert::AreEqual(v7, v6 + v6);
     }
 
     TEST_METHOD(TestSubtract) {
@@ -218,7 +218,7 @@ public:
         Assert::IsTrue(v3 == v0);
         constexpr Vector<double, 4> v4{2.0, 4.0, 6.0, 8.0};
         constexpr auto v5 = v4 - v1;
-        static_assert(std::is_same<decltype(v5), const Vector<double, 4>>::value, "");
+        static_assert(std::is_same<decltype(v5), const Vector<double, 4>>{}, "");
         static_assert(v5 == v2, "");
         Assert::IsTrue(v5 == v2);
         constexpr auto v6{v1};
@@ -229,13 +229,10 @@ public:
     TEST_METHOD(TestScalarMultiply) {
         constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
         const auto v1 = v0 * 2.0f;
-        const auto v2 = 2.0f * v0;
-        constexpr auto v3 = v0 * 2.0;
-        static_assert(std::is_same<decltype(v3), const Vector<double, 4>>::value, "");
+        constexpr auto v2 = 2.0f * v0;
         Assert::AreEqual(v1, v2);
         Assert::AreEqual(v1, Vec4f{2.0f, 4.0f, 6.0f, 8.0f});
-        Assert::AreEqual(v3, Vector<double, 4>{2.0, 4.0, 6.0, 8.0});
-        Assert::IsTrue(v1 == v3);
+        Assert::AreEqual(v1, v0 + v0);
     }
 
     TEST_METHOD(TestDot) {
@@ -262,7 +259,7 @@ public:
 
         constexpr Vec3i v2{2, 4, 6};
         constexpr auto v3 = v2 / 2;
-        static_assert(std::is_same<decltype(v3), const Vec3i>::value && v3 == Vec3i{1, 2, 3}, "");
+        static_assert(std::is_same<decltype(v3), const Vec3i>{} && v3 == Vec3i{1, 2, 3}, "");
         Assert::AreEqual(v3, Vec3i{1, 2, 3});
     }
 
@@ -304,7 +301,7 @@ public:
     }
 
     TEST_METHOD(TestSwizzle) {
-        static_assert(detail::Max<5, 3, 7, 1, 3>::value == 7, "");
+        static_assert(detail::Max<5, 3, 7, 1, 3>{} == 7, "");
         constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
         constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
         Assert::AreEqual(v0, v1);
@@ -352,6 +349,7 @@ public:
         const auto m3 = MatrixFromRows(Vec4f{1.0f, 0.0f, 0.0f, 0.0f}, Vec4f{0.0f, 1.0f, 0.0f, 0.0f},
                                        Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
         Assert::AreEqual(m2, m3);
+        Assert::AreEqual(m2, identityMatrix<Matrix<float, 3, 4>>());
 
         const auto scale = scaleMat4f(3.0f);
         Assert::AreEqual(scale,
