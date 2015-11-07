@@ -35,7 +35,7 @@ constexpr auto identityQuaternion() noexcept {
 
 // Assumes normalized axis
 template <typename U, typename V>
-inline auto fromAxisAngle(const Vector<U, 3>& axis, V angle) noexcept {
+inline auto QuaternionFromAxisAngle(const Vector<U, 3>& axis, V angle) noexcept {
     const auto t = angle * V(0.5);
     return Quaternion<U>{axis * std::sin(t), std::cos(t)};
 }

@@ -459,7 +459,7 @@ public:
     TEST_METHOD(TestMat4FromQuat) {
         const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
-        const auto q0 = fromAxisAngle(axis, angle);
+        const auto q0 = QuaternionFromAxisAngle(axis, angle);
         const auto m0 = Mat4FromQuat(q0);
         const auto xmq0 = XMQuaternionRotationAxis(toXmVector(axis), angle);
         const auto xmm0 = XMMatrixRotationQuaternion(xmq0);
@@ -521,7 +521,7 @@ TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionFromAxisAngle) {
         const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
-        const auto q0 = fromAxisAngle(axis, angle);
+        const auto q0 = QuaternionFromAxisAngle(axis, angle);
         const auto xmAxis = toXmVector(axis);
         const auto xmq0 = XMQuaternionRotationAxis(xmAxis, angle);
         Assert::IsTrue(areNearlyEqual(q0, xmq0, 1e-6f));
@@ -530,7 +530,7 @@ TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionVectorRotate) {
         const auto axis = normalize(Vec3f{1.0f, 2.0f, 3.0f});
         const auto angle = pif / 6.0f;
-        const auto q0 = fromAxisAngle(axis, angle);
+        const auto q0 = QuaternionFromAxisAngle(axis, angle);
         const auto xmAxis = toXmVector(axis);
         const auto xmq0 = XMQuaternionRotationAxis(xmAxis, angle);
         const auto v0 = Vec3f{4.0f, 5.0f, 6.0f};

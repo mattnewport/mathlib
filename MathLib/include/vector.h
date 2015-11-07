@@ -406,6 +406,11 @@ constexpr auto fold(F f, T t, const Vector<U, N, std::index_sequence<Is...>>& v)
 }
 
 // free function operators and vector specific functions (dot() etc.)
+template<typename T, typename U, size_t N>
+constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<U, N>& y) noexcept {
+    return x.memberwiseMultiply(y);
+}
+
 template <typename T, typename U, size_t N>
 constexpr auto operator/(const Vector<T, N>& a, U s) noexcept {
     return detail::divide(a, s, tag<U>{});
