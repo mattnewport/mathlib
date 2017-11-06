@@ -2,6 +2,11 @@
 
 namespace mathlib {
 
+template <typename T>
+constexpr auto abs(T x) {
+    return x < T{ 0 } ? -x : x;
+}
+
 template <typename T, typename U, typename V>
 constexpr auto clamp(T x, U a, V b) {
     return x < a ? a : (x > b ? b : x);

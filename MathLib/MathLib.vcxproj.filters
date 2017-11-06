@@ -36,5 +36,13 @@
     <ClInclude Include="include\mathfuncs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\vectorio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="vector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
