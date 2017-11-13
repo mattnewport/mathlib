@@ -14,7 +14,7 @@
 
 // This code is very generic and uses multiple layers of function helpers, it compiles down to
 // pretty efficient code in release builds but in debug builds without any inlining it will be
-// pretty inefficient. Using /Ob1 http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug
+// fairly inefficient. Using /Ob1 http://msdn.microsoft.com/en-us/library/47238hez.aspx for debug
 // builds in Visual Studio will help debug performance a lot.
 
 // See this great blog post by Nathan Reed for some discussion of design decisions around vector
@@ -25,6 +25,13 @@ namespace mathlib {
 
 namespace detail {
 
+// ValArray exists mainly to take advantage of aggregate initialization without having to define a
+// bunch of constructors (ValArray supports lots of ways to initialize, Vector can restrict them to
+// ones we want to support via providing mostly simple constructors that forward to ValArray) and to
+// provide easy access from any function to the raw variadic indices used in fold expressions and
+// pack expansions for direct array indexing. It doesn't try to provide all functions that might be
+// useful for an end user, rather it just defines functions that can be used as basic building
+// blocks for Vector to provide functions useful to end users.
 template <typename T, size_t N, size_t... Is>
 struct ValArray {
     T e[N];
@@ -53,25 +60,13 @@ struct ValArray {
     }
 
     template <typename F>
-    friend constexpr auto map(F f, const ValArray& x) noexcept {
+    friend constexpr auto map(F&& f, const ValArray& x) noexcept {
         return ValArray{f(x.e[Is])...};
     }
 
     template <typename F>
-    friend constexpr auto map(F f, const ValArray& x, const ValArray& y) noexcept {
+    friend constexpr auto map(F&& f, const ValArray& x, const ValArray& y) noexcept {
         return ValArray{f(x.e[Is], y.e[Is])...};
-    }
-
-    /*
-    template <typename F>
-    friend constexpr auto map(F f, const ValArray& x, const ValArray& y, const ValArray& z) noexcept
-    { return ValArray{ f(x.e[Is], y.e[Is], z.e[Is])... };
-    }
-    */
-
-    template <typename F>
-    constexpr auto fold(F f, T&& t) const noexcept {
-        return foldImpl(f, t, e[Is]...);
     }
 
     constexpr ValArray memberwiseMultiply(const ValArray& x) const noexcept {
@@ -81,17 +76,6 @@ struct ValArray {
     constexpr auto dot(const ValArray& x) const noexcept {
         const auto mm = ValArray{ e[Is] * x.e[Is]... };
         return (... + (mm.e[Is]));
-    }
-
-private:
-    template <typename F>
-    static constexpr auto foldImpl(F&& f, T&& t) noexcept {
-        return t;
-    }
-
-    template <typename F, typename... Ts>
-    static constexpr auto foldImpl(F&& f, T&& t, Ts&&... ts) noexcept {
-        return f(std::forward<T>(t), foldImpl(std::forward<F>(f), std::forward<Ts>(ts)...));
     }
 };
 
@@ -160,7 +144,7 @@ public:
     explicit Vector(const Vector<T, M>& x) noexcept : Vector{x, IS{}} {}
     // Templated explicit conversion constructor from a Vector<U, N-1> and a scalar V
     template <size_t... Is>
-    constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept : Vector{x} {
+    constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept : Vector{ x, std::make_index_sequence<N - 1>{} } {
         es.e[N - 1] = s;
     }
 
@@ -168,9 +152,9 @@ public:
     explicit Vector(const T* p) noexcept : Vector{p, IS{}} {}
 
     // Generic element access
-    constexpr auto operator[](size_t i) noexcept { return es.e[i]; }
+    constexpr auto& operator[](size_t i) noexcept { return es.e[i]; }
     constexpr auto e(size_t i) noexcept { return es.e[i]; }
-    constexpr auto operator[](size_t i) const noexcept { return es.e[i]; }
+    constexpr const auto& operator[](size_t i) const noexcept { return es.e[i]; }
     constexpr auto e(size_t i) const noexcept { return es.e[i]; }
 
     // Named element access through x(), y(), z(), w() functions, enable_if is used to disable these
@@ -336,6 +320,9 @@ private:
     template <typename U, size_t... Is>
     explicit constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) noexcept
         : es{ {T(x[Is])...} } {}
+    // From a Vector<T, M> M < N
+    template <size_t M, size_t... Is>
+    explicit constexpr Vector(const Vector<T, M>& x, std::index_sequence<Is...>) noexcept : es{ {x[Is]...} } {}
 };
 
 using Vec2f = Vector<float, 2>;

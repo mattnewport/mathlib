@@ -67,7 +67,7 @@ TEST_METHOD(TestBasics){const Vec4f v0{1.0f};
     Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
     const Vector<Vec2f, 2> v7{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
-    Assert::IsTrue(std::equal(std::begin(v7[0]), std::end(v7[1]),
+    Assert::IsTrue(std::equal(v7[0].data(), v7[0].data() + 4,
                               stdext::make_unchecked_array_iterator(std::begin({1.0f, 2.0f, 3.0f,
                                                                                 4.0f}))));
 

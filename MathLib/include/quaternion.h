@@ -69,7 +69,7 @@ constexpr auto operator~(const Quaternion<T>& x) noexcept {
 template <typename T, typename U>
 constexpr auto operator*(const Quaternion<T>& x, const Quaternion<U>& y) noexcept {
     return Quaternion<std::common_type_t<T, U>>{x.v() * y.s() + y.v() * x.s() + cross(x.v(), y.v()),
-                                                x.s() * y.s() - (x.v() | y.v())};
+                                                x.s() * y.s() - dot(x.v(), y.v())};
 }
 
 template<typename T, typename U>

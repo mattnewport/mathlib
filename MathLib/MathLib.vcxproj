@@ -147,6 +147,7 @@
     <ClInclude Include="include\mathio.h" />
     <ClInclude Include="include\matrix.h" />
     <ClInclude Include="include\quaternion.h" />
+    <ClInclude Include="include\quaternionio.h" />
     <ClInclude Include="include\vector.h" />
     <ClInclude Include="include\vectorio.h" />
   </ItemGroup>
