@@ -145,6 +145,16 @@ public:
     constexpr const auto& operator[](size_t i) const noexcept { return es.e[i]; }
     constexpr auto e(size_t i) const noexcept { return es.e[i]; }
 
+    // Tuple style element access
+    template <size_t I>
+    friend constexpr const T& get(const Vector &x) {
+        return x.es.e[I];
+    }
+    template <size_t I>
+    friend constexpr T& get(Vector &x) {
+        return x.es.e[I];
+    }
+
     // Named element access through x(), y(), z(), w() functions, enable_if is used to disable these
     // accessor functions for vectors with too few elements.
     constexpr T x() const noexcept { return es.e[0]; }
@@ -282,6 +292,8 @@ public:
 
     friend constexpr bool operator!=(const Vector& x, const Vector& y) noexcept { return !(x.es == y.es); }
 
+    static constexpr auto zero() { return Vector{}; }
+
 private:
     // Helper constructors
     // From a const T* of N contiguous elements
@@ -400,3 +412,12 @@ constexpr auto cross(const Vector<T, 3>& a, const Vector<U, 3>& b) noexcept {
 }
 
 }  // namespace mathlib
+
+namespace std {
+    template<typename T, size_t N>
+    struct tuple_size<mathlib::Vector<T, N>> : integral_constant<size_t, N> {};
+
+    template<size_t I, typename T, size_t N>
+    struct tuple_element<I, mathlib::Vector<T, N>> { using type = T; };
+}
+

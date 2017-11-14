@@ -146,6 +146,11 @@ TEST_METHOD(TestVectorMemberAccess) {
     v1[0] = 1.0f;
     Assert::AreEqual(v1.x(), 1.0f);
     Assert::AreEqual(v1[0], 1.0f);
+
+    // Tuple style / structured bindings
+    static_assert(get<0>(v0) == 1.0f && get<1>(v0) == 2.0f && get<2>(v0) == 3.0f);
+    const auto [x, y, z] = v0;
+    Assert::IsTrue(x == 1.0f && y == 2.0f && z == 3.0f);
 }
     
 TEST_METHOD(TestVectorBasics){
@@ -192,6 +197,7 @@ TEST_METHOD(TestVectorBasics){
 
     constexpr auto v19 = zeroVector<Vec4f>();
     static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
+    static_assert(v19 == Vec4f::zero());
 
     const auto v20 = basisVector<Vec4f>(Z);
     Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
