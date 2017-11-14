@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iterator>
 #include <type_traits>
 
@@ -45,25 +46,94 @@ inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
     return XMVectorGetX(XMVector3Length(diff)) < eps;
 }
 
-TEST_CLASS(VectorUnitTests) {
-public: 
-    
-TEST_METHOD(TestBasics){const Vec4f v0{1.0f};
-    Assert::IsTrue(v0.x() == 1.0f && v0.y() == 1.0f && v0.z() == 1.0f && v0.w() == 1.0f);
+TEST_CLASS(VectorUnitTests){public :
+
+TEST_METHOD(TestConstructors){
+    using namespace std;
+    // Vec4f cannot be constructed from a single float
+    static_assert(!is_constructible_v<Vec4f, float>);
+    // Vec4f cannot be constructed from a char*
+    static_assert(!is_constructible_v<Vec4f, char*>);
+    // Vec4f cannot be constructed from a double
+    static_assert(!is_constructible_v<Vec4f, double>);
+    // Vec4f can be constructed from 4 floats
+    static_assert(is_constructible_v<Vec4f, float, float, float, float>);
+    // Vec4f cannot be constructed from 4 doubles
+    static_assert(!is_constructible_v<Vec4f, double, double, double, double>);
+    // Vec4f can be constructed from Vec4i
+    static_assert(is_constructible_v<Vec4f, Vec4i>);
+    // Vec4f cannot be constructed from Vec3i
+    static_assert(!is_constructible_v<Vec4f, Vec3i>);
+    // Vec4f can be constructed from Vec3f and float
+    static_assert(is_constructible_v<Vec4f, Vec3f, float>);
+    // Vec4f cannot be constructed from Vec3i and int
+    static_assert(!is_constructible_v<Vec4f, Vec3i, int>);
+
+    // Construct from N Ts
     constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
+    static_assert(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
     Assert::IsTrue(v1.x() == 1.0f && v1.y() == 2.0f && v1.z() == 3.0f && v1.w() == 4.0f);
     Assert::IsTrue(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
+
+    // Construct Vector<T, N> from Vector<T, N-1> and a T
+    constexpr Vector<float, 1> v2{ 1.0f };
+    static_assert(v1[0] == 1.0f);
+    constexpr Vec2f v3{ v2, 2.0f };
+    static_assert(v3[0] == 1.0f && v3[1] == 2.0f);
+    constexpr Vec3f v4{ v3, 3.0f };
+    static_assert(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
+    Assert::IsTrue(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
+
+    // Construct Vector<T, N> from Vector<T, M> where M > N (take first N elements)
+    constexpr Vec4f v5{ 1.0f, 2.0f, 3.0f, 4.0f };
+    constexpr Vec3f v6{ v5 };
+    static_assert(v6[0] == 1.0f && v6[1] == 2.0f && v6[2] == 3.0f);
+
+    // Construct Vector<U, N> from Vector<T, N>
+    constexpr Vector<double, 4> vd1{ v5 };
+    static_assert(vd1[0] == 1.0 && vd1[1] == 2.0 && vd1[2] == 3.0 && vd1[3] == 4.0);
+
+    // Construct Vector<T, N> from array of N Ts
+    constexpr float fs[]{ 5.0f, 6.0f, 7.0f, 8.0f };
+    constexpr Vec4f v7{ fs };
+    static_assert(v7[0] == 5.0f && v7[1] == 6.0f && v7[2] == 7.0f && v7[3] == 8.0f);
+}
+
+TEST_METHOD(TestValueInitialization) {
+    using namespace std;
+    union {
+        Vec4f v;
+        char data[sizeof(Vec4f)];
+    } x;
+    memset(x.data, 0xbd, sizeof(x.data));
+    new (x.data) Vec4f{};
+    Assert::IsTrue(x.v[0] == 0.0f && x.v[1] == 0.0f && x.v[2] == 0.0f && x.v[3] == 0.0f);
+}
+
+TEST_METHOD(TestEquality) {
+    constexpr Vec4f v0{ 1.0f, 1.0f, 1.0f, 1.0f };
+    constexpr Vec4f v1{ 1.0f, 2.0f, 3.0f, 4.0f };
     constexpr auto v2 = v1;
+    static_assert(v2 == v1);
     Assert::IsTrue(v2 == v1);
+    static_assert(v0 != v1);
     Assert::IsTrue(v0 != v1);
+    static_assert(!(v2 != v1));
     Assert::IsFalse(v2 != v1);
+    static_assert(!(v0 == v1));
     Assert::IsFalse(v0 == v1);
-    constexpr Vector<double, 4> v3{1.0, 2.0, 3.0, 4.0};
-    const Vector<double, 4> v4{v1};
+    constexpr Vec3f v7{ v1 };
+    static_assert(v7 == Vec3f{ 1.0f, 2.0f, 3.0f });
+
+    constexpr Vector<double, 4> v3{ 1.0, 2.0, 3.0, 4.0 };
+    const Vector<double, 4> v4{ v1 };
     Assert::IsTrue(v4 == v3);
-    const Vector<double, 4> v5{1.0f};
+    const Vector<double, 4> v5{ 1.0, 1.0, 1.0, 1.0 };
     Assert::IsTrue(v5 == Vector<double, 4>{v0});
-    const Vec2f v6{1.0f, 2.0f};
+}
+    
+TEST_METHOD(TestBasics){
+    const Vec2f v6{ 1.0f, 2.0f };
     Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
     const Vector<Vec2f, 2> v7{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
@@ -74,15 +144,16 @@ TEST_METHOD(TestBasics){const Vec4f v0{1.0f};
     const auto v8 = Vec3f{v6, 3.0f};
     Assert::AreEqual(v8, Vec3f{1.0f, 2.0f, 3.0f});
 
-    static_assert(IsVector<Vec4f>{}, "");
-    static_assert(!IsVector<std::tuple<int, int>>{}, "");
-    static_assert(VectorDimension<Vec4f>{} == 4, "");
-    static_assert(std::is_same<float, VectorElementType_t<Vec4f>>{}, "");
+    static_assert(IsVector<Vec4f>{});
+    static_assert(!IsVector<std::tuple<int, int>>{});
+    static_assert(VectorDimension<Vec4f>{} == 4);
+    static_assert(std::is_same<float, VectorElementType_t<Vec4f>>{});
 
+    constexpr Vec4f v1{ 1.0f, 2.0f, 3.0f, 4.0f };
     constexpr auto& v9 = v1;
     constexpr auto v10{v9};
 
-    const auto v11 = Vec3f{1};
+    const auto v11 = Vec3f{1.0f, 1.0f, 1.0f};
     const auto v12 = Vec3f{1.0f, 2.0f, 3.0f};
     const auto v13 = Vec3i{1, 2, 3};
     Vec3f v14 = Vec3f{v13};
@@ -103,21 +174,11 @@ TEST_METHOD(TestBasics){const Vec4f v0{1.0f};
     const auto v17 = Vec3f{v1.data()};
     Assert::AreEqual(v17, v1.xyz());
 
-    auto v18 = Vec4f{};
-    v18.x() = 1.0f;
-    v18.y() = 2.0f;
-    v18.z() = 3.0f;
-    v18.w() = 4.0f;
-    Assert::AreEqual(v18, Vec4f{1.0f, 2.0f, 3.0f, 4.0f});
-
     constexpr auto v19 = zeroVector<Vec4f>();
     static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
 
     const auto v20 = basisVector<Vec4f>(Z);
     Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
-
-    const auto v21 = Vec3f{v18};
-    Assert::AreEqual(v21, Vec3f{1.0f, 2.0f, 3.0f});
 }
 
 TEST_METHOD(TestAdd) {
@@ -230,7 +291,7 @@ TEST_METHOD(TestSwizzle) {
     const auto v2 = swizzle<X>(v0);
     Assert::AreEqual(v2, 1.0f);
     const auto v3 = swizzle<X, X>(v0);
-    Assert::AreEqual(v3, Vec2f{1.0f});
+    Assert::AreEqual(v3, Vec2f{1.0f, 1.0f});
     const auto v4 = swizzle<Y, Z>(v0);
     Assert::AreEqual(v4, Vec2f{v0.y(), v0.z()});
     constexpr auto v5 = swizzle<Z, Z, X, Y>(v0);

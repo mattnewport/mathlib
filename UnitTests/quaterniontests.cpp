@@ -61,18 +61,24 @@ TEST_CLASS(QuaternionUnitTests) {
         Assert::AreEqual(q0.v(), zeroVector<Vec3f>());
     }
 
+    TEST_METHOD(TestQuaternionEquality) {
+        constexpr auto q0 = Quatf{ Vec3f{ 1.0f, 2.0f, 3.0f }, 4.0f };
+        constexpr auto q1 = Quatf{ q0 };
+        constexpr auto q2 = Quatf{ 1.0f, 2.0f, 3.0f, 4.0f };
+        static_assert(q2 == q0);
+        static_assert(q0 != Quatf::identity());
+    }
+
     TEST_METHOD(TestQuaternionBasics) {
-        const auto q0 = Quatf{Vec3f{1.0f, 2.0f, 3.0f}, 4.0f};
-        const auto q1 = Quatf{q0};
+        constexpr auto q0 = Quatf{Vec3f{1.0f, 2.0f, 3.0f}, 4.0f};
+        constexpr auto q1 = Quatf{q0};
+        constexpr auto q2 = Quatf{ 1.0f, 2.0f, 3.0f, 4.0f };
+        static_assert(q2 == q0);
+        constexpr auto q3 = Quatf{ Vec4f{5.0f, 6.0f, 7.0f, 8.0f} };
+        static_assert(q3.x() == 5.0f && q3.y() == 6.0f && q3.z() == 7.0f && q3.w() == 8.0f);
         Assert::IsTrue(q0.v() == Vec3f{1.0f, 2.0f, 3.0f} && q0.s() == 4.0f);
         Assert::IsTrue(q0.x() == q0.v().x() && q0.y() == q0.v().y() && q0.z() == q0.v().z() &&
                        q0.w() == q0.s());
-        auto q2 = Quatf{};
-        q2.x() = 1.0f;
-        q2.y() = 2.0f;
-        q2.z() = 3.0f;
-        q2.w() = 4.0f;
-        Assert::AreEqual(q2, q0);
     }
 
     TEST_METHOD(TestQuaternionFromAxisAngle) {

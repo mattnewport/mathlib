@@ -16,21 +16,41 @@ public:
     constexpr auto v() const noexcept { return Vector::xyz(); }
     constexpr auto s() const noexcept { return Vector::w(); }
 
-    auto& x() noexcept { return Vector::x(); }
-    auto& y() noexcept { return Vector::y(); }
-    auto& z() noexcept { return Vector::z(); }
-    auto& w() noexcept { return Vector::w(); }
-
-    constexpr auto vec4() const noexcept { return static_cast<const Vector<T, 4>&>(*this); }
-
     constexpr auto data() const noexcept { return Vector::data(); }
+
+    friend constexpr auto norm(const Quaternion& x) noexcept {
+        return magnitude(x.vec4());
+    }
+
+    friend constexpr auto operator==(const Quaternion& x, const Quaternion& y) noexcept {
+        return x.vec4() == y.vec4();
+    }
+
+    friend constexpr auto operator!=(const Quaternion& x, const Quaternion& y) noexcept {
+        return x.vec4() != y.vec4();
+    }
+
+    friend constexpr Quaternion operator+(const Quaternion& x, const Quaternion& y) noexcept {
+        return Quaternion{ x.vec4() + y.vec4() };
+    }
+
+    friend constexpr Quaternion operator-(const Quaternion& x, const Quaternion& y) noexcept {
+        return Quaternion{ x.vec4() - y.vec4() };
+    }
+
+    static constexpr Quaternion identity() noexcept {
+        return Quaternion{ basisVector<T, 4>(W) };
+    }
+
+private:
+    constexpr auto vec4() const noexcept { return static_cast<const Vector<T, 4>&>(*this); }
 };
 
 using Quatf = Quaternion<float>;
 
 template <typename T>
 constexpr auto identityQuaternion() noexcept {
-    return Quaternion<T>{basisVector<T, 4>(W)};
+    return Quaternion<T>::identity();
 }
 
 // Assumes normalized axis
@@ -38,26 +58,6 @@ template <typename U, typename V>
 inline auto QuaternionFromAxisAngle(const Vector<U, 3>& axis, V angle) noexcept {
     const auto t = angle * V(0.5);
     return Quaternion<U>{axis * std::sin(t), std::cos(t)};
-}
-
-template <typename T>
-constexpr auto norm(const Quaternion<T>& x) noexcept {
-    return magnitude(x.vec4());
-}
-
-template<typename T, typename U>
-constexpr auto operator==(const Quaternion<T>& x, const Quaternion<U>& y) noexcept {
-    return x.vec4() == y.vec4();
-}
-
-template <typename T, typename U>
-constexpr auto operator+(const Quaternion<T>& x, const Quaternion<U>& y) noexcept {
-    return Quaternion<std::common_type_t<T, U>>{x.vec4() + y.vec4()};
-}
-
-template <typename T, typename U>
-constexpr auto operator-(const Quaternion<T>& x, const Quaternion<U>& y) noexcept {
-    return Quaternion<std::common_type_t<T, U>>{x.vec4() - y.vec4()};
 }
 
 // operator~() is used for Quaternion conjugate, seems less potential for confusion than op*()

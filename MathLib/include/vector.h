@@ -116,10 +116,6 @@ class Vector {
     using data_t = detail::MakeValArray_t<T, N>;
     using IS = std::make_index_sequence<N>;
 
-    // This helper should not be necessary once we have C++17 fold expressions
-    template <typename... Ts>
-    static constexpr void eval(Ts&&...) {}
-
     data_t es;
 
     constexpr Vector(const data_t& es_) : es{es_} {}
@@ -127,29 +123,22 @@ class Vector {
 public:
     constexpr Vector() noexcept = default;
     constexpr Vector(const Vector&) noexcept = default;
-
     // Standard constructor taking a sequence of exactly N objects convertible to T.
     // Question: do we want to allow narrowing conversions?
-    template <typename... Ts, typename = std::enable_if_t<(sizeof...(Ts) == N)>>
-    constexpr Vector(Ts&&... ts) noexcept : es{{ts...}} {}
-
-    // For convenience we have an explicit constructor taking a single argument that sets all
-    // members of the vector to the value of that argument.
-    constexpr explicit Vector(const T& x) noexcept : Vector{x, IS{}} {}
+    template <typename... Ts, typename = std::enable_if_t<((sizeof...(Ts) == N) && (std::is_same_v<T, std::common_type_t<Ts...>>))>>
+    constexpr Vector(const Ts&... ts) noexcept : es{{ts...}} {}
     // Templated explicit conversion constructor from a Vector<U, N>
     template <typename U>
     constexpr explicit Vector(const Vector<U, N>& x) noexcept : Vector{x, IS{}} {}
     // Templated explicit conversion constructor from a Vector<T, M>, M > N: take first N elements
     template <size_t M, typename = std::enable_if_t<(M > N)>>
-    explicit Vector(const Vector<T, M>& x) noexcept : Vector{x, IS{}} {}
-    // Templated explicit conversion constructor from a Vector<U, N-1> and a scalar V
-    template <size_t... Is>
+    constexpr explicit Vector(const Vector<T, M>& x) noexcept : Vector{x, IS{}} {}
+    // Templated explicit conversion constructor from a Vector<T, N-1> and a scalar T s
     constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept : Vector{ x, std::make_index_sequence<N - 1>{} } {
         es.e[N - 1] = s;
     }
-
     // Explicit constructor from a pointer to N Ts
-    explicit Vector(const T* p) noexcept : Vector{p, IS{}} {}
+    constexpr explicit Vector(const T* p) noexcept : Vector{p, IS{}} {}
 
     // Generic element access
     constexpr auto& operator[](size_t i) noexcept { return es.e[i]; }
@@ -159,29 +148,16 @@ public:
 
     // Named element access through x(), y(), z(), w() functions, enable_if is used to disable these
     // accessor functions for vectors with too few elements.
-    T& x() noexcept { return es.e[0]; }
     constexpr T x() const noexcept { return es.e[0]; }
-    template <size_t M = N, typename = std::enable_if_t<(M > 1)>>
-    T& y() noexcept {
-        return es.e[1];
-    }
-    template <size_t M = N, typename = std::enable_if_t<(M > 1)>>
+    template <typename = std::enable_if_t<(N > 1)>>
     constexpr T y() const noexcept {
         return es.e[1];
     }
-    template <size_t M = N, typename = std::enable_if_t<(M > 2)>>
-    T& z() noexcept {
-        return es.e[2];
-    }
-    template <size_t M = N, typename = std::enable_if_t<(M > 2)>>
+    template <typename = std::enable_if_t<(N > 2)>>
     constexpr T z() const noexcept {
         return es.e[2];
     }
-    template <size_t M = N, typename = std::enable_if_t<(M > 3)>>
-    T& w() noexcept {
-        return es.e[3];
-    }
-    template <size_t M = N, typename = std::enable_if_t<(M > 3)>>
+    template <typename = std::enable_if_t<(N > 3)>>
     constexpr T w() const noexcept {
         return es.e[3];
     }
@@ -277,7 +253,7 @@ public:
     }
 
     template <typename F>
-    friend constexpr auto vector_map(F f, const Vector& x) noexcept {
+    friend constexpr auto map(F f, const Vector& x) noexcept {
         return Vector{mathlib::detail::map(f, x.es)};
     }
 
@@ -309,20 +285,13 @@ public:
 
 private:
     // Helper constructors
-    // From a single value of type T
-    template <size_t... Is>
-    explicit constexpr Vector(const T& x, std::index_sequence<Is...>) noexcept
-        : es{((void)Is, x)...} {}
     // From a const T* of N contiguous elements
     template <size_t... Is>
     explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : es{{ts[Is]...}} {}
-    // From a Vector<U, N>
-    template <typename U, size_t... Is>
-    explicit constexpr Vector(const Vector<U, N>& x, std::index_sequence<Is...>) noexcept
+    // From a Vector<U, M>
+    template <typename U, size_t M, size_t... Is>
+    explicit constexpr Vector(const Vector<U, M>& x, std::index_sequence<Is...>) noexcept
         : es{ {T(x[Is])...} } {}
-    // From a Vector<T, M> M < N
-    template <size_t M, size_t... Is>
-    explicit constexpr Vector(const Vector<T, M>& x, std::index_sequence<Is...>) noexcept : es{ {x[Is]...} } {}
 };
 
 using Vec2f = Vector<float, 2>;
@@ -364,17 +333,6 @@ struct ScalarType<Vector<T, N>> {
 
 // Implementation helpers for operators and free functions, not part of public API
 namespace detail {
-// MNTODO: replace this fold machinery with C++17 fold expressions once available
-
-template <typename F, typename T>
-constexpr auto foldImpl(F&& f, T&& t) noexcept {
-    return t;
-}
-
-template <typename F, typename T, typename... Ts>
-constexpr auto foldImpl(F&& f, T&& t, Ts&&... ts) noexcept {
-    return f(std::forward<T>(t), foldImpl(std::forward<F>(f), std::forward<Ts>(ts)...));
-}
 
 template <typename T, size_t N, size_t... Js>
 constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) noexcept {
@@ -419,13 +377,6 @@ constexpr auto basisVector(size_t i) noexcept {
 template <typename V>
 constexpr auto basisVector(size_t i) noexcept {
     return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
-}
-
-// Fold a function F(T, U) over elements of Vector<U, N> v.
-// e.g. fold(op+, 0.0f, Vec3f x) == float{x.x + x.y + x.z}
-template <typename F, typename T, size_t N>
-constexpr auto fold(F f, T t, const Vector<T, N>& v) noexcept {
-    return v.fold(f, t);
 }
 
 // free function operators and vector specific functions (dot() etc.)
