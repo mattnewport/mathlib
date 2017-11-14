@@ -151,6 +151,10 @@ TEST_METHOD(TestVectorMemberAccess) {
     static_assert(get<0>(v0) == 1.0f && get<1>(v0) == 2.0f && get<2>(v0) == 3.0f);
     const auto [x, y, z] = v0;
     Assert::IsTrue(x == 1.0f && y == 2.0f && z == 3.0f);
+    Vec3f v2{ 1.0f, 2.0f, 3.0f };
+    auto& [xr, yr, zr] = v2;
+    xr = 4.0f;
+    Assert::IsTrue(v2.x() == 4.0f && yr == 2.0f && zr == 3.0f);
 }
     
 TEST_METHOD(TestVectorBasics){
