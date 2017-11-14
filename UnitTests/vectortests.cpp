@@ -48,7 +48,7 @@ inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
 
 TEST_CLASS(VectorUnitTests){public :
 
-TEST_METHOD(TestConstructors){
+TEST_METHOD(TestVectorConstructors){
     using namespace std;
     // Vec4f cannot be constructed from a single float
     static_assert(!is_constructible_v<Vec4f, float>);
@@ -99,7 +99,7 @@ TEST_METHOD(TestConstructors){
     static_assert(v7[0] == 5.0f && v7[1] == 6.0f && v7[2] == 7.0f && v7[3] == 8.0f);
 }
 
-TEST_METHOD(TestValueInitialization) {
+TEST_METHOD(TestVectorValueInitialization) {
     using namespace std;
     union {
         Vec4f v;
@@ -110,7 +110,7 @@ TEST_METHOD(TestValueInitialization) {
     Assert::IsTrue(x.v[0] == 0.0f && x.v[1] == 0.0f && x.v[2] == 0.0f && x.v[3] == 0.0f);
 }
 
-TEST_METHOD(TestEquality) {
+TEST_METHOD(TestVectorEquality) {
     constexpr Vec4f v0{ 1.0f, 1.0f, 1.0f, 1.0f };
     constexpr Vec4f v1{ 1.0f, 2.0f, 3.0f, 4.0f };
     constexpr auto v2 = v1;
@@ -131,8 +131,24 @@ TEST_METHOD(TestEquality) {
     const Vector<double, 4> v5{ 1.0, 1.0, 1.0, 1.0 };
     Assert::IsTrue(v5 == Vector<double, 4>{v0});
 }
+
+TEST_METHOD(TestVectorMemberAccess) {
+    constexpr Vec3f v0{ 1.0f, 2.0f, 3.0f };
+    static_assert(v0.x() == 1.0f && v0.y() == 2.0f && v0.z() == 3.0f);
+    static_assert(v0[0] == v0.x() && v0[1] == v0.y() && v0[2] == v0.z());
+    static_assert(v0.e(0) == v0.x() && v0.e(1) == v0.y() && v0.e(2) == v0.z());
+    static_assert(v0.e(X) == v0.x() && v0.e(Y) == v0.y() && v0.e(Z) == v0.z());
+    // This should not compile
+    // static_assert(v0.w() == 0.0f);
+
+    Vec4f v1{};
+    Assert::AreEqual(v1.x(), 0.0f);
+    v1[0] = 1.0f;
+    Assert::AreEqual(v1.x(), 1.0f);
+    Assert::AreEqual(v1[0], 1.0f);
+}
     
-TEST_METHOD(TestBasics){
+TEST_METHOD(TestVectorBasics){
     const Vec2f v6{ 1.0f, 2.0f };
     Assert::IsTrue(v6.x() == 1.0f && v6.y() == 2.0f);
 
@@ -181,7 +197,7 @@ TEST_METHOD(TestBasics){
     Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
 }
 
-TEST_METHOD(TestAdd) {
+TEST_METHOD(TestVectorAdd) {
     constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
     constexpr Vec4f v1{2.0f, 4.0f, 6.0f, 8.0f};
     constexpr auto v2 = v0 + v1;
@@ -200,7 +216,7 @@ TEST_METHOD(TestAdd) {
     Assert::AreEqual(v7, v6 + v6);
 }
 
-TEST_METHOD(TestSubtract) {
+TEST_METHOD(TestVectorSubtract) {
     constexpr Vec4f v0{2.0f, 4.0f, 6.0f, 8.0f};
     constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
     constexpr auto v2 = v0 - v1;
@@ -214,7 +230,7 @@ TEST_METHOD(TestSubtract) {
     static_assert(v7 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
 }
 
-TEST_METHOD(TestScalarMultiply) {
+TEST_METHOD(TestVectorScalarMultiply) {
     constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
     auto v3{ v0 };
     v3 *= 2.0f;
@@ -226,7 +242,7 @@ TEST_METHOD(TestScalarMultiply) {
     Assert::AreEqual(v1, v0 + v0);
 }
 
-TEST_METHOD(TestDot) {
+TEST_METHOD(TestVectorDot) {
     constexpr Vec4f v0{1.0f, 2.0f, 3.0f, 4.0f};
     constexpr Vec4f v1{2.0f, 4.0f, 6.0f, 8.0f};
     constexpr auto s0 = dot(v0, v1);
@@ -234,7 +250,7 @@ TEST_METHOD(TestDot) {
     static_assert(s0 == 1.0f * 2.0f + 2.0f * 4.0f + 3.0f * 6.0f + 4.0f * 8.0f);
 }
 
-TEST_METHOD(TestDivide) {
+TEST_METHOD(TestVectorDivide) {
     constexpr Vec3f v0{2.0f, 4.0f, 6.0f};
     const auto v1 = v0 / 2.0f;
     // static_assert(v1 == Vec3f{1.0f, 2.0f, 3.0f}, "");
@@ -246,7 +262,7 @@ TEST_METHOD(TestDivide) {
     Assert::AreEqual(v3, Vec3i{1, 2, 3});
 }
 
-TEST_METHOD(TestMagnitude) {
+TEST_METHOD(TestVectorMagnitude) {
     const Vec2f v0{3.0f, 4.0f};
     const auto s0 = magnitude(v0);
     Assert::AreEqual(s0, 5.0f);
@@ -255,7 +271,7 @@ TEST_METHOD(TestMagnitude) {
     Assert::AreEqual(s1, sqrt(3.0f));
 }
 
-TEST_METHOD(TestNormalize) {
+TEST_METHOD(TestVectorNormalize) {
     constexpr Vec3f v0{1.0f, 2.0f, 3.0f};
     const auto s0 = magnitude(v0);
     const auto v1 = normalize(v0);
@@ -267,7 +283,7 @@ TEST_METHOD(TestNormalize) {
                    closeEnough(v0.z(), v2.z()));
 }
 
-TEST_METHOD(TestOpAssignment) {
+TEST_METHOD(TestVectorOpAssignment) {
     Vec3f v0{1.0f, 2.0f, 3.0f};
     constexpr Vec3f v1{1.0f, 2.0f, 3.0f};
     v0 += v1;
@@ -283,7 +299,7 @@ TEST_METHOD(TestOpAssignment) {
     Assert::IsTrue(v2.x() == 2 / 2 && v2.y() == 3 / 2 && v2.z() == 4 / 2);
 }
 
-TEST_METHOD(TestSwizzle) {
+TEST_METHOD(TestVectorSwizzle) {
     static_assert(detail::Max<5, 3, 7, 1, 3>{} == 7, "");
     constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
     constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
@@ -305,7 +321,7 @@ TEST_METHOD(TestSwizzle) {
     Assert::AreEqual(v8, Vec3f{1.0f, 1.0f, 2.0f});
 }
 
-TEST_METHOD(TestCross) {
+TEST_METHOD(TestVectorCross) {
     constexpr auto v0 = Vec3f{1.0f, 2.0f, 3.0f};
     constexpr auto v1 = Vec3f{4.0f, 5.0f, 6.0f};
     const auto v2 = cross(v0, v1);

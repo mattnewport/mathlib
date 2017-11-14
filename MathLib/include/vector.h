@@ -137,12 +137,11 @@ public:
     constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept : Vector{ x, std::make_index_sequence<N - 1>{} } {
         es.e[N - 1] = s;
     }
-    // Explicit constructor from a pointer to N Ts
+    // Explicit constructor from a pointer to N or more Ts
     constexpr explicit Vector(const T* p) noexcept : Vector{p, IS{}} {}
 
     // Generic element access
     constexpr auto& operator[](size_t i) noexcept { return es.e[i]; }
-    constexpr auto e(size_t i) noexcept { return es.e[i]; }
     constexpr const auto& operator[](size_t i) const noexcept { return es.e[i]; }
     constexpr auto e(size_t i) const noexcept { return es.e[i]; }
 
@@ -163,11 +162,11 @@ public:
     }
 
     // Common swizzles
-    constexpr const auto xy() const noexcept { return swizzle<X, Y>(*this); }
-    constexpr const auto xz() const noexcept { return swizzle<X, Z>(*this); }
-    constexpr const auto xyz() const noexcept { return swizzle<X, Y, Z>(*this); }
-    constexpr const auto yzx() const noexcept { return swizzle<Y, Z, X>(*this); }
-    constexpr const auto zxy() const noexcept { return swizzle<Z, X, Y>(*this); }
+    constexpr auto xy() const noexcept { return swizzle<X, Y>(*this); }
+    constexpr auto xz() const noexcept { return swizzle<X, Z>(*this); }
+    constexpr auto xyz() const noexcept { return swizzle<X, Y, Z>(*this); }
+    constexpr auto yzx() const noexcept { return swizzle<Y, Z, X>(*this); }
+    constexpr auto zxy() const noexcept { return swizzle<Z, X, Y>(*this); }
 
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
