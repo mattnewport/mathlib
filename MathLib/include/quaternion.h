@@ -7,16 +7,17 @@ namespace mathlib {
 template <typename T>
 class Quaternion : private Vector<T, 4> {
 public:
-    using Vector::Vector;
+    using Vector_t = Vector<T, 4>;
+    using Vector_t::Vector_t;
 
-    constexpr auto x() const noexcept { return Vector::x(); }
-    constexpr auto y() const noexcept { return Vector::y(); }
-    constexpr auto z() const noexcept { return Vector::z(); }
-    constexpr auto w() const noexcept { return Vector::w(); }
-    constexpr auto v() const noexcept { return Vector::xyz(); }
-    constexpr auto s() const noexcept { return Vector::w(); }
+    constexpr auto x() const noexcept { return Vector_t::x(); }
+    constexpr auto y() const noexcept { return Vector_t::y(); }
+    constexpr auto z() const noexcept { return Vector_t::z(); }
+    constexpr auto w() const noexcept { return Vector_t::w(); }
+    constexpr auto v() const noexcept { return Vector_t::xyz(); }
+    constexpr auto s() const noexcept { return Vector_t::w(); }
 
-    constexpr auto data() const noexcept { return Vector::data(); }
+    constexpr auto data() const noexcept { return Vector_t::data(); }
 
     friend constexpr auto norm(const Quaternion& x) noexcept {
         return magnitude(x.vec4());

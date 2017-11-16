@@ -171,12 +171,23 @@ public:
         return es.e[3];
     }
 
+    // Swizzle members of Vector: call with v.swizzled<X, Y, Z, W> where the order of X, Y, Z, W
+    // determines the swizzle pattern. Output Vector dimension is determined by the number of
+    // swizzle constants, e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f Special case for a single
+    // swizzle constant: return value is scalar T rather than Vector<T, 1>, e.g. result of
+    // swizzle<X>(Vec4f) is a float not a Vector<float, 1>
+    template <size_t... Is>
+    constexpr auto swizzled() const noexcept {
+        using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
+        return ReturnType{ es.e[Is]... };
+    }
+
     // Common swizzles
-    constexpr auto xy() const noexcept { return swizzle<X, Y>(*this); }
-    constexpr auto xz() const noexcept { return swizzle<X, Z>(*this); }
-    constexpr auto xyz() const noexcept { return swizzle<X, Y, Z>(*this); }
-    constexpr auto yzx() const noexcept { return swizzle<Y, Z, X>(*this); }
-    constexpr auto zxy() const noexcept { return swizzle<Z, X, Y>(*this); }
+    constexpr auto xy() const noexcept { return this->swizzled<X, Y>(); }
+    constexpr auto xz() const noexcept { return this->swizzled<X, Z>(); }
+    constexpr auto xyz() const noexcept { return this->swizzled<X, Y, Z>(); }
+    constexpr auto yzx() const noexcept { return this->swizzled<Y, Z, X>(); }
+    constexpr auto zxy() const noexcept { return this->swizzled<Z, X, Y>(); }
 
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
@@ -247,18 +258,6 @@ public:
 
     friend constexpr auto dot(const Vector& x, const Vector& y) noexcept {
         return x.es.dot(y.es);
-    }
-
-    // Swizzle members of Vector: call with swizzle<X, Y, Z, W>(v) where the order of X, Y, Z, W
-    // determines the swizzle pattern. Output Vector dimension is determined by the number of
-    // swizzle constants, e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f Special case for a single
-    // swizzle constant: return value is scalar T rather than Vector<T, 1>, e.g. result of
-    // swizzle<X>(Vec4f) is a float not a Vector<float, 1>
-    template <size_t... Is>
-    friend constexpr auto swizzle(const Vector& x) noexcept {
-        static_assert(N > detail::Max<Is...>{}, "All swizzle args must be <= Vector dimension.");
-        using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
-        return ReturnType{x.es.e[Is]...};
     }
 
     template <typename F>

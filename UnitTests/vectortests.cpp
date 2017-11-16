@@ -196,6 +196,9 @@ TEST_METHOD(TestVectorBasics){
     auto v16 = basisVector<Vec3f>(Y);
     Assert::AreEqual(v16, v15);
 
+    const auto vd1 = basisVector<Vector<double, 3>>(Y);
+    Assert::IsTrue(vd1[0] == 0.0 && vd1[1] == 1.0 && vd1[2] == 0.0);
+
     const auto v17 = Vec3f{v1.data()};
     Assert::AreEqual(v17, v1.xyz());
 
@@ -312,23 +315,27 @@ TEST_METHOD(TestVectorOpAssignment) {
 TEST_METHOD(TestVectorSwizzle) {
     static_assert(detail::Max<5, 3, 7, 1, 3>{} == 7, "");
     constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
-    constexpr auto v1 = swizzle<X, Y, Z, W>(v0);
+    constexpr auto v1 = v0.swizzled<X, Y, Z, W>();
     Assert::AreEqual(v0, v1);
-    const auto v2 = swizzle<X>(v0);
+    const auto v2 = v0.swizzled<X>();
     Assert::AreEqual(v2, 1.0f);
-    const auto v3 = swizzle<X, X>(v0);
+    const auto v3 = v0.swizzled<X, X>();
     Assert::AreEqual(v3, Vec2f{1.0f, 1.0f});
-    const auto v4 = swizzle<Y, Z>(v0);
+    const auto v4 = v0.swizzled<Y, Z>();
     Assert::AreEqual(v4, Vec2f{v0.y(), v0.z()});
-    constexpr auto v5 = swizzle<Z, Z, X, Y>(v0);
+    constexpr auto v5 = v0.swizzled<Z, Z, X, Y>();
     Assert::AreEqual(v5, Vec4f{v0.z(), v0.z(), v0.x(), v0.y()});
     constexpr auto v6 = v0.xyz();
     Assert::AreEqual(v6, Vec3f{v0.x(), v0.y(), v0.z()});
     constexpr auto v7 = v0.xy();
     Assert::AreEqual(v7, Vec2f{v0.x(), v0.y()});
     Assert::AreEqual(v0.xz(), Vec2f{v0.x(), v0.z()});
-    constexpr auto v8 = swizzle<X, X, Y>(Vec2f{1.0f, 2.0f});
+    constexpr auto v8 = Vec2f{1.0f, 2.0f}.swizzled<X, X, Y>();
     Assert::AreEqual(v8, Vec3f{1.0f, 1.0f, 2.0f});
+
+    const Vector<double, 3> vd1{ 1.0, 2.0, 3.0 };
+    const auto vd2 = vd1.swizzled<Z, X, Y>();
+    Assert::IsTrue(vd2[0] == 3.0 && vd2[1] == 1.0 && vd2[2] == 2.0);
 }
 
 TEST_METHOD(TestVectorCross) {

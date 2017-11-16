@@ -101,6 +101,10 @@ TEST_CLASS(QuaternionUnitTests) {
         const auto v1 = rotate(v0, q0);
         const auto xmv1 = XMVector3Rotate(xmv0, xmq0);
         Assert::IsTrue(areNearlyEqual(v1, xmv1, 1e-6f));
+
+        const auto init = basisVector<Vector<double, 3>>(Y);
+        const auto rotZ = QuaternionFromAxisAngle(basisVector<Vector<double, 3>>(X), 30.0);
+        const auto elev = rotate(init, rotZ);
     }
 
     TEST_METHOD(TestQuaternionNorm) {
