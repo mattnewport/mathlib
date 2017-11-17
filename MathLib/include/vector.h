@@ -36,24 +36,24 @@ template <typename T, size_t N, size_t... Is>
 struct ValArray {
     T e[N];
 
-    constexpr ValArray& operator+=(const ValArray &x) noexcept {
+    constexpr ValArray& operator+=(const ValArray& x) noexcept {
         ((e[Is] += x.e[Is]), ...);
         return *this;
     }
-    constexpr ValArray& operator-=(const ValArray &x) noexcept {
+    constexpr ValArray& operator-=(const ValArray& x) noexcept {
         ((e[Is] -= x.e[Is]), ...);
         return *this;
     }
-    constexpr ValArray& operator*=(const T &x) noexcept {
+    constexpr ValArray& operator*=(const T& x) noexcept {
         ((e[Is] *= x), ...);
         return *this;
     }
-    constexpr ValArray& operator/=(const T &x) noexcept {
+    constexpr ValArray& operator/=(const T& x) noexcept {
         ((e[Is] /= x), ...);
         return *this;
     }
 
-    constexpr ValArray operator-() const noexcept { return ValArray{ {-e[Is]...} }; }
+    constexpr ValArray operator-() const noexcept { return ValArray{{-e[Is]...}}; }
 
     constexpr bool operator==(const ValArray& x) const noexcept {
         return (... && (e[Is] == x.e[Is]));
@@ -61,20 +61,20 @@ struct ValArray {
 
     template <typename F>
     friend constexpr auto map(F&& f, const ValArray& x) noexcept {
-        return ValArray{ {f(x.e[Is])...} };
+        return ValArray{{f(x.e[Is])...}};
     }
 
     template <typename F>
     friend constexpr auto map(F&& f, const ValArray& x, const ValArray& y) noexcept {
-        return ValArray{ {f(x.e[Is], y.e[Is])...} };
+        return ValArray{{f(x.e[Is], y.e[Is])...}};
     }
 
     constexpr ValArray memberwiseMultiply(const ValArray& x) const noexcept {
-        return ValArray{ {e[Is] * x.e[Is]...} };
+        return ValArray{{e[Is] * x.e[Is]...}};
     }
 
     constexpr auto dot(const ValArray& x) const noexcept {
-        const auto mm = ValArray{ {e[Is] * x.e[Is]...} };
+        const auto mm = ValArray{{e[Is] * x.e[Is]...}};
         return (... + (mm.e[Is]));
     }
 };
@@ -106,26 +106,35 @@ struct ScalarType {
 template <typename T>
 using ScalarType_t = typename ScalarType<T>::type;
 
-// IS defaulted template argument is an implementation trick to make it possible to write operators
-// that can directly deduce an index sequence and therefore be implemented without calling a helper
-// function. This both reduces the amount of boilerplate code that needs to be written and reduces
-// inlining depth which is particulary helpful for performance in debug builds if inlining is not
-// enabled.
 template <typename T, size_t N>
 class Vector {
     using data_t = detail::MakeValArray_t<T, N>;
     using IS = std::make_index_sequence<N>;
 
+    constexpr Vector(const data_t& es_) noexcept : es{es_} {}
     data_t es;
 
-    constexpr Vector(const data_t& es_) : es{es_} {}
+    // Helper constructors
+    // From a const T* of N contiguous elements
+    template <size_t... Is>
+    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : es{ { ts[Is]... } } {}
+    // From a Vector<U, M>
+    template <typename U, size_t M, size_t... Is>
+    explicit constexpr Vector(const Vector<U, M>& x, std::index_sequence<Is...>) noexcept
+        : es{ { T(x[Is])... } } {}
+
+    template <size_t... Is>
+    static constexpr auto basisImpl(size_t i, std::index_sequence<Is...>) noexcept {
+        return Vector{T(i == Is)...};
+    }
 
 public:
     constexpr Vector() noexcept = default;
     constexpr Vector(const Vector&) noexcept = default;
-    // Standard constructor taking a sequence of exactly N objects convertible to T.
-    // Question: do we want to allow narrowing conversions?
-    template <typename... Ts, typename = std::enable_if_t<((sizeof...(Ts) == N) && (std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>))>>
+    // Standard constructor taking a sequence of exactly N Ts.
+    template <typename... Ts, typename = std::enable_if_t<
+                                  ((sizeof...(Ts) == N) &&
+                                   (std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>))>>
     constexpr Vector(const Ts&... ts) noexcept : es{{ts...}} {}
     // Templated explicit conversion constructor from a Vector<U, N>
     template <typename U>
@@ -134,7 +143,8 @@ public:
     template <size_t M, typename = std::enable_if_t<(M > N)>>
     constexpr explicit Vector(const Vector<T, M>& x) noexcept : Vector{x, IS{}} {}
     // Templated explicit conversion constructor from a Vector<T, N-1> and a scalar T s
-    constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept : Vector{ x, std::make_index_sequence<N - 1>{} } {
+    constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept
+        : Vector{x, std::make_index_sequence<N - 1>{}} {
         es.e[N - 1] = s;
     }
     // Explicit constructor from a pointer to N or more Ts
@@ -143,30 +153,41 @@ public:
     // Generic element access
     constexpr auto& operator[](size_t i) noexcept { return es.e[i]; }
     constexpr const auto& operator[](size_t i) const noexcept { return es.e[i]; }
-    constexpr auto e(size_t i) const noexcept { return es.e[i]; }
 
     // Tuple style element access
     template <size_t I>
-    constexpr const T& get() const noexcept { return es.e[I]; }
+    constexpr T& get() noexcept {
+        return es.e[I];
+    }
     template <size_t I>
-    constexpr T& get() noexcept { return es.e[I]; }
+    constexpr const T& get() const noexcept {
+        return es.e[I];
+    }
 
-    // Named element access through x(), y(), z(), w() functions, enable_if is used to disable these
-    // accessor functions for vectors with too few elements.
+    // Named element access through x(), y(), z(), w() functions.
     constexpr T x() const noexcept { return es.e[0]; }
-    constexpr T y() const noexcept { static_assert(N > 1); return es.e[1]; }
-    constexpr T z() const noexcept { static_assert(N > 2); return es.e[2]; }
-    constexpr T w() const noexcept { static_assert(N > 3); return es.e[3]; }
+    constexpr T y() const noexcept {
+        static_assert(N > 1);
+        return es.e[1];
+    }
+    constexpr T z() const noexcept {
+        static_assert(N > 2);
+        return es.e[2];
+    }
+    constexpr T w() const noexcept {
+        static_assert(N > 3);
+        return es.e[3];
+    }
 
     // Swizzle members of Vector: call with v.swizzled<X, Y, Z, W> where the order of X, Y, Z, W
     // determines the swizzle pattern. Output Vector dimension is determined by the number of
-    // swizzle constants, e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f Special case for a single
+    // swizzle constants, e.g. result of swizzle<X, Y>(Vec4f) is a Vec2f. Special case for a single
     // swizzle constant: return value is scalar T rather than Vector<T, 1>, e.g. result of
     // swizzle<X>(Vec4f) is a float not a Vector<float, 1>
     template <size_t... Is>
     constexpr auto swizzled() const noexcept {
         using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
-        return ReturnType{ es.e[Is]... };
+        return ReturnType{es.e[Is]...};
     }
 
     // Common swizzles
@@ -217,22 +238,24 @@ public:
 
     constexpr auto operator-() const noexcept { return Vector{-es}; }
 
-    constexpr auto operator+(const Vector& x) const noexcept {
-        auto res{*this};
-        return res += x;
+    friend constexpr auto operator+(Vector x, const Vector& y) noexcept {
+        x.es += y.es;
+        return x;
     }
 
-    constexpr auto operator-(const Vector& x) const noexcept {
-        auto res{*this};
-        return res -= x;
+    friend constexpr auto operator-(Vector x, const Vector& y) noexcept {
+        x.es -= y.es;
+        return x;
     }
 
     friend constexpr auto operator*(Vector x, const ScalarType_t<T>& s) noexcept {
-        return x *= s;
+        x.es *= s;
+        return x;
     }
 
     friend constexpr auto operator/(Vector x, const ScalarType_t<T>& s) noexcept {
-        return x /= s;
+        x.es /= s;
+        return x;
     }
 
     friend constexpr auto operator*(const T& s, const Vector& x) noexcept { return x * s; }
@@ -243,9 +266,7 @@ public:
         return Vector{es.memberwiseMultiply(x.es)};
     }
 
-    friend constexpr auto dot(const Vector& x, const Vector& y) noexcept {
-        return x.es.dot(y.es);
-    }
+    friend constexpr auto dot(const Vector& x, const Vector& y) noexcept { return x.es.dot(y.es); }
 
     template <typename F>
     friend constexpr auto map(F f, const Vector& x) noexcept {
@@ -253,11 +274,11 @@ public:
     }
 
     friend constexpr auto abs(const Vector& x) noexcept {
-        return Vector{map(mathlib::abs<T>, x.es)};
+        return Vector{map([](const T& x) { return std::abs(x); }, x.es)};
     }
 
     friend constexpr auto min(const Vector& x, const Vector& y) noexcept {
-        return Vector{ map([](const T& x, const T& y) { return std::min<T>(x, y); }, x.es, y.es) };
+        return Vector{map([](const T& x, const T& y) { return std::min<T>(x, y); }, x.es, y.es)};
     }
 
     friend constexpr auto max(const Vector& x, const Vector& y) noexcept {
@@ -265,31 +286,28 @@ public:
     }
 
     friend constexpr auto saturate(const Vector& x) noexcept {
-        return Vector{ map(saturate<T>, x.es) };
+        return Vector{map(saturate<T>, x.es)};
     }
 
     friend constexpr auto clamp(const Vector<T, N>& x, const T& a, const T& b) noexcept {
-        return Vector{ map([=](const T& y) { return clamp(y, a, b); }, x.es) };
+        return Vector{map([=](const T& y) { return std::clamp(y, a, b); }, x.es)};
     }
 
     friend constexpr bool operator==(const Vector& x, const Vector& y) noexcept {
         return x.es == y.es;
     }
 
-    friend constexpr bool operator!=(const Vector& x, const Vector& y) noexcept { return !(x.es == y.es); }
+    friend constexpr bool operator!=(const Vector& x, const Vector& y) noexcept {
+        return !(x.es == y.es);
+    }
 
     static constexpr auto zero() { return Vector{}; }
-
-private:
-    // Helper constructors
-    // From a const T* of N contiguous elements
-    template <size_t... Is>
-    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : es{{ts[Is]...}} {}
-    // From a Vector<U, M>
-    template <typename U, size_t M, size_t... Is>
-    explicit constexpr Vector(const Vector<U, M>& x, std::index_sequence<Is...>) noexcept
-        : es{ {T(x[Is])...} } {}
+    static constexpr auto basis(size_t i) { return basisImpl(i, IS{}); }
 };
+
+using Vec2d = Vector<double, 2>;
+using Vec3d = Vector<double, 3>;
+using Vec4d = Vector<double, 4>;
 
 using Vec2f = Vector<float, 2>;
 using Vec3f = Vector<float, 3>;
@@ -328,28 +346,7 @@ struct ScalarType<Vector<T, N>> {
     using type = ScalarType_t<T>;
 };
 
-// Implementation helpers for operators and free functions, not part of public API
-namespace detail {
-
-template <typename T, size_t N, size_t... Js>
-constexpr auto basisVectorImpl(size_t i, std::index_sequence<Js...>) noexcept {
-    return Vector<T, N>{T(i == Js)...};
-}
-
-template <size_t I, size_t J>
-struct MaxImpl : public std::integral_constant<size_t, (J > I ? J : I)> {};
-
-template <size_t... Is>
-struct Max;
-
-template <size_t I>
-struct Max<I> : public std::integral_constant<size_t, I> {};
-
-template <size_t I, size_t... Is>
-struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
-
-}  // namespace detail
-
+// Free function tuple style get<>()
 template <std::size_t I, typename T, std::size_t N>
 constexpr auto get(const mathlib::Vector<T, N>& x) noexcept -> const T& {
     return x[I];
@@ -360,35 +357,16 @@ constexpr auto get(mathlib::Vector<T, N>& x) noexcept -> T& {
     return x[I];
 }
 
-// Returns a vector of all zeros
-// e.g. zeroVector<float, 3>() == Vec3f{0.0f, 0.0f, 0.0f}
-// e.g. zeroVector<Vec3f>() = Vec3f{0.0f, 0.0f, 0.0f};
-template <typename T, size_t N>
-constexpr auto zeroVector() noexcept {
-    return Vector<T, N>{};
-}
-
-template <typename V>
-constexpr auto zeroVector() noexcept {
-    return Vector<VectorElementType_t<V>, VectorDimension<V>::value>{};
-}
-
 // Returns a basis vector with 1 in the specified position and 0 elsewhere,
 // e.g. basisVector<float, 3>(2) == Vec3f{0.0f, 1.0f, 0.0f}
-// e.g. basisVector<Vec3f>(Y) == Vec3f{0.0f, 1.0f, 0.0f}
 template <typename T, size_t N>
 constexpr auto basisVector(size_t i) noexcept {
-    return detail::basisVectorImpl<T, N>(i, std::make_index_sequence<N>{});
-}
-
-template <typename V>
-constexpr auto basisVector(size_t i) noexcept {
-    return basisVector<VectorElementType_t<V>, VectorDimension<V>::value>(i);
+    return Vector<T, N>::basis(i);
 }
 
 // free function operators and vector specific functions (dot() etc.)
-template <typename T, typename U, size_t N>
-constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<U, N>& y) noexcept {
+template <typename T, size_t N>
+constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<T, N>& y) noexcept {
     return x.memberwiseMultiply(y);
 }
 
@@ -402,8 +380,8 @@ constexpr auto normalize(const Vector<T, N>& a) noexcept {
     return a * (T{1} / magnitude(a));
 }
 
-template <typename T, typename U>
-constexpr auto cross(const Vector<T, 3>& a, const Vector<U, 3>& b) noexcept {
+template <typename T>
+constexpr auto cross(const Vector<T, 3>& a, const Vector<T, 3>& b) noexcept {
     return a.yzx().memberwiseMultiply(b.zxy()) - a.zxy().memberwiseMultiply(b.yzx());
 }
 

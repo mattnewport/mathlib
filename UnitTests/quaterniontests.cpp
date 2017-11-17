@@ -62,7 +62,7 @@ inline auto areNearlyEqual(const Quatf& q, const XMVECTOR& xmq, float eps) {
 TEST_CLASS(QuaternionUnitTests) {
     TEST_METHOD(TestQuaternionValueInit) {
         const auto q0 = Quatf{};
-        Assert::AreEqual(q0.v(), zeroVector<Vec3f>());
+        Assert::AreEqual(q0.v(), Vec3f::zero());
     }
 
     TEST_METHOD(TestQuaternionEquality) {
@@ -110,8 +110,8 @@ TEST_CLASS(QuaternionUnitTests) {
         Assert::IsTrue(areNearlyEqual(v1, xmv1, 1e-6f));
 #endif
 
-        const auto init = basisVector<Vector<double, 3>>(Y);
-        const auto rotZ = QuaternionFromAxisAngle(basisVector<Vector<double, 3>>(X), 30.0);
+        const auto init = Vector<double, 3>::basis(Y);
+        const auto rotZ = QuaternionFromAxisAngle(Vector<double, 3>::basis(X), 30.0);
         [[maybe_unused]] const auto elev = rotate(init, rotZ);
     }
 

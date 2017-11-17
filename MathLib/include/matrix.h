@@ -79,33 +79,33 @@ private:
 using Mat4f = Matrix<float, 4, 4>;
 
 // Useful type traits for working with Matrices
-template<typename T>
+template <typename T>
 struct IsMatrix : std::false_type {};
 
-template<typename T, size_t M, size_t N>
+template <typename T, size_t M, size_t N>
 struct IsMatrix<Matrix<T, M, N>> : std::true_type {};
 
-template<typename T>
+template <typename T>
 struct MatrixRows;
 
-template<typename T, size_t M, size_t N>
+template <typename T, size_t M, size_t N>
 struct MatrixRows<Matrix<T, M, N>> : std::integral_constant<size_t, M> {};
 
-template<typename T>
+template <typename T>
 struct MatrixColumns;
 
-template<typename T, size_t M, size_t N>
+template <typename T, size_t M, size_t N>
 struct MatrixColumns<Matrix<T, M, N>> : std::integral_constant<size_t, N> {};
 
-template<typename T>
+template <typename T>
 struct MatrixElementType;
 
-template<typename T, size_t M, size_t N>
+template <typename T, size_t M, size_t N>
 struct MatrixElementType<Matrix<T, M, N>> {
     using type = T;
 };
 
-template<typename T>
+template <typename T>
 using MatrixElementType_t = typename MatrixElementType<T>::type;
 
 template <typename T, size_t M, size_t N>
@@ -118,7 +118,7 @@ inline auto MatrixFromDataPointer(const T* p) noexcept {
 template <typename M>
 inline auto MatrixFromDataPointer(const MatrixElementType_t<M>* p) noexcept {
     return MatrixFromDataPointer<MatrixElementType_t<M>, MatrixRows<M>::value,
-        MatrixColumns<M>::value>(p);
+                                 MatrixColumns<M>::value>(p);
 }
 
 template <typename... Us>
@@ -223,20 +223,18 @@ constexpr auto identityMatrix() noexcept {
 }
 
 inline auto scaleMat4f(float s) noexcept {
-    return Mat4f{basisVector<Vec4f>(X) * s, basisVector<Vec4f>(Y) * s, basisVector<Vec4f>(Z) * s,
-                 basisVector<Vec4f>(W)};
+    return Mat4f{Vec4f::basis(X) * s, Vec4f::basis(Y) * s, Vec4f::basis(Z) * s, Vec4f::basis(W)};
 }
 
 inline auto translationMat4f(const Vec3f& t) noexcept {
-    return Mat4f{basisVector<Vec4f>(X), basisVector<Vec4f>(Y), basisVector<Vec4f>(Z),
-                 Vec4f{t, 1.0f}};
+    return Mat4f{Vec4f::basis(X), Vec4f::basis(Y), Vec4f::basis(Z), Vec4f{t, 1.0f}};
 }
 
 inline auto rotationYMat4f(float angle) noexcept {
     const auto sinAngle = std::sin(angle);
     const auto cosAngle = std::cos(angle);
-    return Mat4f{Vec4f{cosAngle, 0.0f, -sinAngle, 0.0f}, basisVector<Vec4f>(Y),
-                 Vec4f{sinAngle, 0.0f, cosAngle, 0.0f}, basisVector<Vec4f>(W)};
+    return Mat4f{Vec4f{cosAngle, 0.0f, -sinAngle, 0.0f}, Vec4f::basis(Y),
+                 Vec4f{sinAngle, 0.0f, cosAngle, 0.0f}, Vec4f::basis(W)};
 }
 
 // up should be a normalized direction vector
@@ -247,7 +245,7 @@ inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) no
     const auto negEyePos = -eye;
     const auto d = Vec3f{xAxis | negEyePos, yAxis | negEyePos, zAxis | negEyePos};
     return MatrixFromColumns(Vec4f{xAxis, d.x()}, Vec4f{yAxis, d.y()}, Vec4f{zAxis, d.z()},
-                             basisVector<Vec4f>(W));
+                             Vec4f::basis(W));
 }
 
 template <typename T>

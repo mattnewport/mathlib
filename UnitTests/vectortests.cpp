@@ -140,8 +140,6 @@ TEST_METHOD(TestVectorMemberAccess) {
     constexpr Vec3f v0{ 1.0f, 2.0f, 3.0f };
     static_assert(v0.x() == 1.0f && v0.y() == 2.0f && v0.z() == 3.0f);
     static_assert(v0[0] == v0.x() && v0[1] == v0.y() && v0[2] == v0.z());
-    static_assert(v0.e(0) == v0.x() && v0.e(1) == v0.y() && v0.e(2) == v0.z());
-    static_assert(v0.e(X) == v0.x() && v0.e(Y) == v0.y() && v0.e(Z) == v0.z());
     // This should not compile
     // static_assert(v0.w() == 0.0f);
 
@@ -186,29 +184,29 @@ TEST_METHOD(TestVectorBasics){
     Vec3f v14 = Vec3f{v13};
 
     Assert::IsTrue(v12[0] == v12.x() && v12[1] == v12.y() && v12[2] == v12.z());
-    Assert::IsTrue(-v14 + +v14 == zeroVector<Vec3f>());
+    Assert::IsTrue(-v14 + +v14 == Vec3f::zero());
 
     auto pv = new (&v14) Vec3f;
     Assert::AreEqual(*pv, v12);
     pv = new (&v14) Vec3f{};  // check value initialization syntax works
     Assert::AreEqual(*pv, Vec3f{0.0f, 0.0f, 0.0f});
 
-    auto v15 = basisVector<float, 3>(Y);
+    auto v15 = Vector<float, 3>::basis(Y);
     Assert::AreEqual(v15, Vec3f{0.0f, 1.0f, 0.0f});
-    auto v16 = basisVector<Vec3f>(Y);
+    auto v16 = Vec3f::basis(Y);
     Assert::AreEqual(v16, v15);
 
-    const auto vd1 = basisVector<Vector<double, 3>>(Y);
+    const auto vd1 = Vector<double, 3>::basis(Y);
     Assert::IsTrue(vd1[0] == 0.0 && vd1[1] == 1.0 && vd1[2] == 0.0);
 
     const auto v17 = Vec3f{v1.data()};
     Assert::AreEqual(v17, v1.xyz());
 
-    constexpr auto v19 = zeroVector<Vec4f>();
+    constexpr auto v19 = Vec4f::zero();
     static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
     static_assert(v19 == Vec4f::zero());
 
-    const auto v20 = basisVector<Vec4f>(Z);
+    const auto v20 = Vec4f::basis(Z);
     Assert::IsTrue(v20 == Vec4f{0.0f, 0.0f, 1.0f, 0.0f});
 }
 
@@ -315,7 +313,6 @@ TEST_METHOD(TestVectorOpAssignment) {
 }
 
 TEST_METHOD(TestVectorSwizzle) {
-    static_assert(detail::Max<5, 3, 7, 1, 3>{} == 7, "");
     constexpr auto v0 = Vec4f{1.0f, 2.0f, 3.0f, 4.0f};
     constexpr auto v1 = v0.swizzled<X, Y, Z, W>();
     Assert::AreEqual(v0, v1);
