@@ -53,7 +53,7 @@ struct ValArray {
         return *this;
     }
 
-    constexpr ValArray operator-() const noexcept { return ValArray{-e[Is]...}; }
+    constexpr ValArray operator-() const noexcept { return ValArray{ {-e[Is]...} }; }
 
     constexpr bool operator==(const ValArray& x) const noexcept {
         return (... && (e[Is] == x.e[Is]));
@@ -61,20 +61,20 @@ struct ValArray {
 
     template <typename F>
     friend constexpr auto map(F&& f, const ValArray& x) noexcept {
-        return ValArray{f(x.e[Is])...};
+        return ValArray{ {f(x.e[Is])...} };
     }
 
     template <typename F>
     friend constexpr auto map(F&& f, const ValArray& x, const ValArray& y) noexcept {
-        return ValArray{f(x.e[Is], y.e[Is])...};
+        return ValArray{ {f(x.e[Is], y.e[Is])...} };
     }
 
     constexpr ValArray memberwiseMultiply(const ValArray& x) const noexcept {
-        return ValArray{e[Is] * x.e[Is]...};
+        return ValArray{ {e[Is] * x.e[Is]...} };
     }
 
     constexpr auto dot(const ValArray& x) const noexcept {
-        const auto mm = ValArray{ e[Is] * x.e[Is]... };
+        const auto mm = ValArray{ {e[Is] * x.e[Is]...} };
         return (... + (mm.e[Is]));
     }
 };
@@ -125,7 +125,7 @@ public:
     constexpr Vector(const Vector&) noexcept = default;
     // Standard constructor taking a sequence of exactly N objects convertible to T.
     // Question: do we want to allow narrowing conversions?
-    template <typename... Ts, typename = std::enable_if_t<((sizeof...(Ts) == N) && (std::is_same_v<T, std::common_type_t<Ts...>>))>>
+    template <typename... Ts, typename = std::enable_if_t<((sizeof...(Ts) == N) && (std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>))>>
     constexpr Vector(const Ts&... ts) noexcept : es{{ts...}} {}
     // Templated explicit conversion constructor from a Vector<U, N>
     template <typename U>
@@ -147,29 +147,16 @@ public:
 
     // Tuple style element access
     template <size_t I>
-    friend constexpr const T& get(const Vector &x) {
-        return x.es.e[I];
-    }
+    constexpr const T& get() const noexcept { return es.e[I]; }
     template <size_t I>
-    friend constexpr T& get(Vector &x) {
-        return x.es.e[I];
-    }
+    constexpr T& get() noexcept { return es.e[I]; }
 
     // Named element access through x(), y(), z(), w() functions, enable_if is used to disable these
     // accessor functions for vectors with too few elements.
     constexpr T x() const noexcept { return es.e[0]; }
-    template <typename = std::enable_if_t<(N > 1)>>
-    constexpr T y() const noexcept {
-        return es.e[1];
-    }
-    template <typename = std::enable_if_t<(N > 2)>>
-    constexpr T z() const noexcept {
-        return es.e[2];
-    }
-    template <typename = std::enable_if_t<(N > 3)>>
-    constexpr T w() const noexcept {
-        return es.e[3];
-    }
+    constexpr T y() const noexcept { static_assert(N > 1); return es.e[1]; }
+    constexpr T z() const noexcept { static_assert(N > 2); return es.e[2]; }
+    constexpr T w() const noexcept { static_assert(N > 3); return es.e[3]; }
 
     // Swizzle members of Vector: call with v.swizzled<X, Y, Z, W> where the order of X, Y, Z, W
     // determines the swizzle pattern. Output Vector dimension is determined by the number of
@@ -262,7 +249,7 @@ public:
 
     template <typename F>
     friend constexpr auto map(F f, const Vector& x) noexcept {
-        return Vector{mathlib::detail::map(f, x.es)};
+        return Vector{map(f, x.es)};
     }
 
     friend constexpr auto abs(const Vector& x) noexcept {
@@ -338,7 +325,7 @@ using VectorElementType_t = typename VectorElementType<T>::type;
 
 template <typename T, size_t N>
 struct ScalarType<Vector<T, N>> {
-    using type = typename ScalarType_t<T>;
+    using type = ScalarType_t<T>;
 };
 
 // Implementation helpers for operators and free functions, not part of public API
@@ -362,6 +349,16 @@ template <size_t I, size_t... Is>
 struct Max<I, Is...> : public detail::MaxImpl<I, Max<Is...>::value> {};
 
 }  // namespace detail
+
+template <std::size_t I, typename T, std::size_t N>
+constexpr auto get(const mathlib::Vector<T, N>& x) noexcept -> const T& {
+    return x[I];
+}
+
+template <std::size_t I, typename T, std::size_t N>
+constexpr auto get(mathlib::Vector<T, N>& x) noexcept -> T& {
+    return x[I];
+}
 
 // Returns a vector of all zeros
 // e.g. zeroVector<float, 3>() == Vec3f{0.0f, 0.0f, 0.0f}
@@ -413,10 +410,11 @@ constexpr auto cross(const Vector<T, 3>& a, const Vector<U, 3>& b) noexcept {
 }  // namespace mathlib
 
 namespace std {
-    template<typename T, size_t N>
-    struct tuple_size<mathlib::Vector<T, N>> : integral_constant<size_t, N> {};
+template <typename T, size_t N>
+struct tuple_size<mathlib::Vector<T, N>> : integral_constant<size_t, N> {};
 
-    template<size_t I, typename T, size_t N>
-    struct tuple_element<I, mathlib::Vector<T, N>> { using type = T; };
-}
-
+template <size_t I, typename T, size_t N>
+struct tuple_element<I, mathlib::Vector<T, N>> {
+    using type = T;
+};
+}  // namespace std

@@ -4,17 +4,12 @@
 #include <iterator>
 #include <type_traits>
 
-#include "CppUnitTest.h"
+#include "unittestwrapper.h"
 
 #include "mathconstants.h"
 #include "mathfuncs.h"
 #include "vector.h"
 #include "vectorio.h"
-
-#include <DirectXMath.h>
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-using namespace DirectX;
 
 using namespace mathlib;
 
@@ -31,20 +26,13 @@ namespace Microsoft {
 
 
 namespace UnitTests {
-    inline auto toXmVector(const Vec3f& v) { return XMLoadFloat3(std::data({ XMFLOAT3{ v.data() } })); }
-    inline auto toXmVector(const Vec4f& v) { return XMLoadFloat4(std::data({ XMFLOAT4{ v.data() } })); }
-
-    inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
-        const auto diff = toXmVector(v) - xmv;
-        return XMVectorGetX(XMVector3Length(diff)) < eps;
-    }
 
     template<typename T>
     constexpr auto areNearlyEqual(const T& a, const T& b, const T& eps) {
         return std::abs(a - b) < eps;
     }
 
-    TEST_CLASS(FuncsUnitTests) {
+TEST_CLASS(FuncsUnitTests) {
 public:
     TEST_METHOD(TestLerp) {
         auto x0 = lerp(0.0f, 1.0f, 0.3f);
@@ -77,5 +65,6 @@ public:
         const auto v1 = clamp(v0, 1.0f, 2.0f);
         Assert::AreEqual(v1, Vec3f{ 1.0f, 2.0f, 1.1f });
     }
-    };
+};
+
 }

@@ -5,16 +5,18 @@
 #include <iterator>
 #include <type_traits>
 
-#include "CppUnitTest.h"
+#include "unittestwrapper.h"
 
 #include "mathconstants.h"
 #include "vector.h"
 #include "vectorio.h"
 
+#if defined(__clang__)
+#elif defined(_MSC_VER)
 #include <DirectXMath.h>
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+#define USE_DIRECTXMATH
 using namespace DirectX;
+#endif
 
 using namespace mathlib;
 
@@ -33,18 +35,20 @@ auto ToString(const Vector<T, N>& x) {
 
 namespace UnitTests {
 
-inline auto toXmVector(const Vec3f& v) { return XMLoadFloat3(std::data({XMFLOAT3{v.data()}})); }
-inline auto toXmVector(const Vec4f& v) { return XMLoadFloat4(std::data({XMFLOAT4{v.data()}})); }
-
 template <typename T>
 constexpr auto areNearlyEqual(const T& a, const T& b, const T& eps) {
     return std::abs(a - b) < eps;
 }
 
+#ifdef USE_DIRECTXMATH
+inline auto toXmVector(const Vec3f& v) { return XMLoadFloat3(std::data({XMFLOAT3{v.data()}})); }
+inline auto toXmVector(const Vec4f& v) { return XMLoadFloat4(std::data({XMFLOAT4{v.data()}})); }
+
 inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
     const auto diff = toXmVector(v) - xmv;
     return XMVectorGetX(XMVector3Length(diff)) < eps;
 }
+#endif
 
 TEST_CLASS(VectorUnitTests){public :
 
@@ -148,6 +152,7 @@ TEST_METHOD(TestVectorMemberAccess) {
     Assert::AreEqual(v1[0], 1.0f);
 
     // Tuple style / structured bindings
+    static_assert(v0.get<0>() == 1.0f && v0.get<1>() == 2.0f && v0.get<2>() == 3.0f);
     static_assert(get<0>(v0) == 1.0f && get<1>(v0) == 2.0f && get<2>(v0) == 3.0f);
     const auto [x, y, z] = v0;
     Assert::IsTrue(x == 1.0f && y == 2.0f && z == 3.0f);
@@ -175,10 +180,7 @@ TEST_METHOD(TestVectorBasics){
     static_assert(std::is_same<float, VectorElementType_t<Vec4f>>{});
 
     constexpr Vec4f v1{ 1.0f, 2.0f, 3.0f, 4.0f };
-    constexpr auto& v9 = v1;
-    constexpr auto v10{v9};
 
-    const auto v11 = Vec3f{1.0f, 1.0f, 1.0f};
     const auto v12 = Vec3f{1.0f, 2.0f, 3.0f};
     const auto v13 = Vec3i{1, 2, 3};
     Vec3f v14 = Vec3f{v13};
@@ -341,11 +343,13 @@ TEST_METHOD(TestVectorSwizzle) {
 TEST_METHOD(TestVectorCross) {
     constexpr auto v0 = Vec3f{1.0f, 2.0f, 3.0f};
     constexpr auto v1 = Vec3f{4.0f, 5.0f, 6.0f};
-    const auto v2 = cross(v0, v1);
+    [[maybe_unused]] const auto v2 = cross(v0, v1);
+#ifdef USE_DIRECTXMATH
     const auto xv0 = toXmVector(v0);
     const auto xv1 = toXmVector(v1);
     auto xv2 = XMVector3Cross(xv0, xv1);
     Assert::IsTrue(memcmp(&xv2, &v2, sizeof(v2)) == 0);
+#endif
 }
 };
 

@@ -12,7 +12,9 @@ template <typename CharT>
 struct separator {
     static const CharT* const value;
 };
+template<>
 const char* const separator<char>::value = ", ";
+template<>
 const wchar_t* const separator<wchar_t>::value = L", ";
 
 template <typename T, size_t N, typename CharT>

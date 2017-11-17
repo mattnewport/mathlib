@@ -10,6 +10,9 @@ public:
     using Vector_t = Vector<T, 4>;
     using Vector_t::Vector_t;
 
+    Quaternion() = default;
+    constexpr Quaternion(const Vector_t& v) : Vector_t{ v } {}
+
     constexpr auto x() const noexcept { return Vector_t::x(); }
     constexpr auto y() const noexcept { return Vector_t::y(); }
     constexpr auto z() const noexcept { return Vector_t::z(); }
@@ -40,10 +43,9 @@ public:
     }
 
     static constexpr Quaternion identity() noexcept {
-        return Quaternion{ basisVector<T, 4>(W) };
+        return Quaternion{T(0), T(0), T(0), T(1)};
     }
 
-private:
     constexpr auto vec4() const noexcept { return static_cast<const Vector<T, 4>&>(*this); }
 };
 
