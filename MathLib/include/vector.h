@@ -25,6 +25,9 @@ namespace mathlib {
 
 // Declare some useful helpers for working with Vector<T, N>'s (specialized for Vector<T, N> later)
 template <typename T>
+struct IsVector : std::false_type {};
+
+template <typename T>
 struct VectorDimension;
 
 template <typename T>
@@ -36,7 +39,18 @@ struct VectorElementType;
 template <typename T>
 using VectorElementType_t = typename VectorElementType<T>::type;
 
+template <typename T>
+struct ScalarType {
+    using type = std::decay_t<T>;
+};
+
+template <typename T>
+using ScalarType_t = typename ScalarType<std::decay_t<T>>::type;
+
 namespace detail {
+
+// Useful for debugging template errors
+template<typename... Ts> struct Debug;
 
 // ValArray exists mainly to take advantage of aggregate initialization without having to define a
 // bunch of constructors (ValArray supports lots of ways to initialize, Vector can restrict them to
@@ -60,11 +74,11 @@ struct VectorBase {
         ((e[Is] -= x.e[Is]), ...);
         return static_cast<Vector&>(*this);
     }
-    constexpr Vector& operator*=(const T& x) noexcept {
+    constexpr Vector& operator*=(const ScalarType_t<Vector>& x) noexcept {
         ((e[Is] *= x), ...);
         return static_cast<Vector&>(*this);
     }
-    constexpr Vector& operator/=(const T& x) noexcept {
+    constexpr Vector& operator/=(const ScalarType_t<Vector>& x) noexcept {
         ((e[Is] /= x), ...);
         return static_cast<Vector&>(*this);
     }
@@ -81,12 +95,24 @@ struct VectorBase {
         return Vector{(e[Is] - x.e[Is])...};
     }
 
+    // Binary *//
+    constexpr Vector operator*(const ScalarType_t<Vector>& x) const noexcept {
+        return Vector{(e[Is] * x)...};
+    }
+    constexpr Vector operator/(const ScalarType_t<Vector>& x) const noexcept {
+        if constexpr (std::is_floating_point_v<ScalarType_t<Vector>>) {
+            const auto s = ScalarType_t<Vector>{1} / x;
+            return Vector{(e[Is] * s)...};
+        }
+        return Vector{(e[Is] / x)...};
+    }
+
     // Comparison
     constexpr bool operator==(const Vector& x) const noexcept {
         return (... && (e[Is] == x.e[Is]));
     }
     constexpr bool operator!=(const Vector& x) const noexcept { return !(*this == x); }
-    
+
     template <typename F>
     constexpr auto mapHelper(F&& f) const noexcept {
         return Vector{f(e[Is])...};
@@ -101,9 +127,22 @@ struct VectorBase {
         return Vector{e[Is] * x.e[Is]...};
     }
 
-    constexpr T dot(const Vector& x) const noexcept {
+    constexpr auto dot(const Vector& x) const noexcept {
         const auto mm = VectorBase{{e[Is] * x.e[Is]...}};
         return (... + (mm.e[Is]));
+    }
+
+    constexpr auto magnitude() const noexcept {
+        const auto mm = VectorBase{{e[Is] * e[Is]...}};
+        return std::sqrt((... + (mm.e[Is])));
+    }
+
+    static constexpr Vector basis(size_t i) noexcept { return Vector{T(i == Is)...}; }
+    static constexpr Vector ones() noexcept {
+        if constexpr (std::is_same_v<T, ScalarType_t<T>>)
+            return Vector{T((Is, 1))...};
+        else
+            return Vector{(Is, T::ones())...};
     }
 };
 
@@ -126,14 +165,6 @@ using MakeVectorBase_t = typename MakeVectorBase<Vector>::type;
 
 enum VectorComponents { X = 0, Y = 1, Z = 2, W = 3 };
 
-template <typename T>
-struct ScalarType {
-    using type = T;
-};
-
-template <typename T>
-using ScalarType_t = typename ScalarType<T>::type;
-
 template <typename T, size_t N>
 class Vector : private detail::MakeVectorBase_t<Vector<T, N>> {
     using base = detail::MakeVectorBase_t<Vector<T, N>>;
@@ -143,16 +174,14 @@ class Vector : private detail::MakeVectorBase_t<Vector<T, N>> {
     // Helper constructors
     // From a const T* of N contiguous elements
     template <size_t... Is>
-    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : base{ { ts[Is]... } } {}
+    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept
+        : base{{ts[Is]...}} {}
     // From a Vector<U, M>
     template <typename U, size_t M, size_t... Is>
     explicit constexpr Vector(const Vector<U, M>& x, std::index_sequence<Is...>) noexcept
-        : base{ { T(x[Is])... } } {}
+        : base{{T(x[Is])...}} {}
 
-    template <size_t... Is>
-    static constexpr auto basisImpl(size_t i, std::index_sequence<Is...>) noexcept {
-        return Vector{T(i == Is)...};
-    }
+    explicit Vector(const base& x) : base{x} {}
 
 public:
     constexpr Vector() noexcept = default;
@@ -181,25 +210,21 @@ public:
 
     // Tuple style element access
     template <size_t I>
-    constexpr T& get() noexcept {
-        return this->e[I];
-    }
-    template <size_t I>
     constexpr const T& get() const noexcept {
         return this->e[I];
     }
 
     // Named element access through x(), y(), z(), w() functions.
-    constexpr T x() const noexcept { return this->e[0]; }
-    constexpr T y() const noexcept {
+    constexpr const T& x() const noexcept { return this->e[0]; }
+    constexpr const T& y() const noexcept {
         static_assert(N > 1);
         return this->e[1];
     }
-    constexpr T z() const noexcept {
+    constexpr const T& z() const noexcept {
         static_assert(N > 2);
         return this->e[2];
     }
-    constexpr T w() const noexcept {
+    constexpr const T& w() const noexcept {
         static_assert(N > 3);
         return this->e[3];
     }
@@ -223,15 +248,16 @@ public:
     constexpr auto zxy() const noexcept { return this->swizzled<Z, X, Y>(); }
 
     // These begin() and end() functions allow a Vector to be used like a container for element
-    // access. Not generally recommended but sometimes useful.
-    constexpr T* begin() noexcept { return std::begin(this->e); }
-    constexpr T* end() noexcept { return std::end(this->e); }
-    constexpr const T* begin() const noexcept { return std::cbegin(this->e); }
-    constexpr const T* end() const noexcept { return std::cend(this->e); }
+    // access. Not generally recommended but sometimes useful. Note no non-const versions provided.
+    constexpr auto begin() const noexcept { return std::cbegin(this->e); }
+    constexpr auto end() const noexcept { return std::cend(this->e); }
 
-    // Return a pointer to the raw underlying contiguous element data.
-    constexpr T* data() noexcept { return this->e; }
+    // Return a (const) pointer to the raw underlying contiguous element data.
     constexpr const T* data() const noexcept { return this->e; }
+
+    // Equality
+    using base::operator==;
+    using base::operator!=;
 
     // @=() op assignment operators
     using base::operator+=;
@@ -243,21 +269,29 @@ public:
     using base::operator+;
     using base::operator-;
 
-    friend constexpr auto operator*(Vector x, const ScalarType_t<T>& s) noexcept {
-        return x *= s;
+    // Binary operator *//
+    using base::operator*;
+    using base::operator/;
+    friend constexpr auto operator*(const ScalarType_t<Vector>& s, const Vector& x) noexcept {
+        return x * s;
     }
-
-    friend constexpr auto operator/(Vector x, const ScalarType_t<T>& s) noexcept {
-        return x /= s;
-    }
-
-    friend constexpr auto operator*(const T& s, const Vector& x) noexcept { return x * s; }
 
     // Multiply elements of Vectors x and y memberwise
-    // e.g. memberwiseMultiply(Vec3f x, Vec3f y) == Vec3f{x.x * y.x, x.y * y.y, x.z * y.z}
+    // e.g. Vec3f x, y; x.memberwiseMultiply(y) == Vec3f{x.x * y.x, x.y * y.y, x.z * y.z}
     using base::memberwiseMultiply;
+    friend constexpr auto memberwiseMultiply(const Vector& x, const Vector& y) noexcept {
+        return x.memberwiseMultiply(y);
+    }
 
+    // Dot product
+    using base::dot;
     friend constexpr auto dot(const Vector& x, const Vector& y) noexcept { return x.dot(y); }
+
+    // magnitude and normalize
+    using base::magnitude;
+    friend constexpr auto magnitude(const Vector& x) noexcept { return x.magnitude(); }
+
+    friend constexpr auto normalize(const Vector& x) noexcept { return x * (T{1} / x.magnitude()); }
 
     template <typename F>
     friend constexpr auto map(F f, const Vector& x) noexcept {
@@ -280,15 +314,14 @@ public:
         return Vector{x.mapHelper(saturate<T>)};
     }
 
-    friend constexpr auto clamp(const Vector<T, N>& x, const T& a, const T& b) noexcept {
+    friend constexpr auto clamp(const Vector<T, N>& x, const ScalarType_t<Vector>& a,
+                                const ScalarType_t<Vector>& b) noexcept {
         return Vector{x.mapHelper([=](const T& y) { return std::clamp(y, a, b); })};
     }
 
-    using base::operator==;
-    using base::operator!=;
-
     static constexpr auto zero() { return Vector{}; }
-    static constexpr auto basis(size_t i) { return basisImpl(i, IS{}); }
+    using base::basis;
+    using base::ones;
 };
 
 using Vec2d = Vector<double, 2>;
@@ -303,10 +336,7 @@ using Vec2i = Vector<int, 2>;
 using Vec3i = Vector<int, 3>;
 using Vec4i = Vector<int, 4>;
 
-// Useful type traits for working with Vectors
-template <typename T>
-struct IsVector : std::false_type {};
-
+// Specializations of type traits for working with Vectors
 template <typename T, size_t N>
 struct IsVector<Vector<T, N>> : std::true_type {};
 
@@ -317,9 +347,6 @@ template <typename T, size_t N>
 struct VectorElementType<Vector<T, N>> {
     using type = T;
 };
-
-template <typename T>
-using VectorElementType_t = typename VectorElementType<T>::type;
 
 template <typename T, size_t N>
 struct ScalarType<Vector<T, N>> {
@@ -345,21 +372,6 @@ constexpr auto basisVector(size_t i) noexcept {
 }
 
 // free function operators and vector specific functions (dot() etc.)
-template <typename T, size_t N>
-constexpr auto memberwiseMultiply(const Vector<T, N>& x, const Vector<T, N>& y) noexcept {
-    return x.memberwiseMultiply(y);
-}
-
-template <typename T, size_t N>
-constexpr T magnitude(const Vector<T, N>& a) noexcept {
-    return sqrt(dot(a, a));
-}
-
-template <typename T, size_t N>
-constexpr auto normalize(const Vector<T, N>& a) noexcept {
-    return a * (T{1} / magnitude(a));
-}
-
 template <typename T>
 constexpr auto cross(const Vector<T, 3>& a, const Vector<T, 3>& b) noexcept {
     return a.yzx().memberwiseMultiply(b.zxy()) - a.zxy().memberwiseMultiply(b.yzx());
@@ -367,6 +379,7 @@ constexpr auto cross(const Vector<T, 3>& a, const Vector<T, 3>& b) noexcept {
 
 }  // namespace mathlib
 
+// Specialize std::tuple_size and std::tuple_element for Vector to support structured bindings
 namespace std {
 template <typename T, size_t N>
 struct tuple_size<mathlib::Vector<T, N>> : integral_constant<size_t, N> {};

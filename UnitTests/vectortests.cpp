@@ -50,7 +50,10 @@ inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
 }
 #endif
 
-TEST_CLASS(VectorUnitTests){public :
+template<typename T> struct Debug;
+
+TEST_CLASS(VectorUnitTests) {
+public :
 
 TEST_METHOD(TestVectorConstructors){
     using namespace std;
@@ -101,6 +104,11 @@ TEST_METHOD(TestVectorConstructors){
     constexpr float fs[]{ 5.0f, 6.0f, 7.0f, 8.0f };
     constexpr Vec4f v7{ fs };
     static_assert(v7[0] == 5.0f && v7[1] == 6.0f && v7[2] == 7.0f && v7[3] == 8.0f);
+
+    // Construct a Vector of Vectors
+    constexpr Vector<Vec2f, 2> v8{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
+    static_assert(std::is_same_v<ScalarType_t<Vec2f>, float>);
+    static_assert(std::is_same_v<ScalarType_t<decltype(v8)>, float>);
 }
 
 TEST_METHOD(TestVectorValueInitialization) {
@@ -112,6 +120,15 @@ TEST_METHOD(TestVectorValueInitialization) {
     memset(x.data, 0xbd, sizeof(x.data));
     new (x.data) Vec4f{};
     Assert::IsTrue(x.v[0] == 0.0f && x.v[1] == 0.0f && x.v[2] == 0.0f && x.v[3] == 0.0f);
+}
+
+TEST_METHOD(TestVectorZeroAndOnes) {
+    constexpr auto v0 = Vec3f::zero();
+    static_assert(v0[0] == 0.0f && v0[1] == 0.0f && v0[2] == 0.0f);
+    constexpr auto v1 = Vec3f::ones();
+    static_assert(v1[0] == 1.0f && v1[0] == 1.0f && v1[1] == 1.0f);
+    constexpr auto v2 = Vector<Vec2f, 2>::ones();
+    static_assert(v2 == Vector<Vec2f, 2>{Vec2f{1.0f, 1.0f}, Vec2f{1.0f, 1.0f}});
 }
 
 TEST_METHOD(TestVectorEquality) {
@@ -147,15 +164,24 @@ TEST_METHOD(TestVectorMemberAccess) {
     Assert::AreEqual(v1.x(), 0.0f);
     Assert::AreEqual(v1[0], 0.0f);
 
+    // Vector of Vectors
+    constexpr Vector<Vec2f, 2> vv1{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
+    static_assert(vv1[0][0] == 1.0f && vv1[0][1] == 2.0f && vv1[1][0] == 3.0f && vv1[1][1] == 4.0f);
+    Assert::IsTrue(vv1[0][0] == 1.0f && vv1[0][1] == 2.0f && vv1[1][0] == 3.0f && vv1[1][1] == 4.0f);
+
     // Tuple style / structured bindings
     static_assert(v0.get<0>() == 1.0f && v0.get<1>() == 2.0f && v0.get<2>() == 3.0f);
     static_assert(get<0>(v0) == 1.0f && get<1>(v0) == 2.0f && get<2>(v0) == 3.0f);
     const auto [x, y, z] = v0;
     Assert::IsTrue(x == 1.0f && y == 2.0f && z == 3.0f);
     Vec3f v2{ 1.0f, 2.0f, 3.0f };
+
+    // Deliberately not allowing this for now
+    /*
     auto& [xr, yr, zr] = v2;
     xr = 4.0f;
     Assert::IsTrue(v2.x() == 4.0f && yr == 2.0f && zr == 3.0f);
+    */
 }
     
 TEST_METHOD(TestVectorBasics){
@@ -201,7 +227,7 @@ TEST_METHOD(TestVectorBasics){
     Assert::AreEqual(v17, v1.xyz());
 
     constexpr auto v19 = Vec4f::zero();
-    static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f}, "");
+    static_assert(v19 == Vec4f{0.0f, 0.0f, 0.0f, 0.0f});
     static_assert(v19 == Vec4f::zero());
 
     const auto v20 = Vec4f::basis(Z);
@@ -214,8 +240,8 @@ TEST_METHOD(TestVectorAdd) {
     constexpr auto v2 = v0 + v1;
     Assert::AreEqual(Vec4f{3.0f, 6.0f, 9.0f, 12.0f}, v2);
     constexpr Vector<double, 4> v3{2.0, 4.0, 6.0, 8.0};
-    static_assert(std::is_convertible<float, double>{}, "");
-    static_assert(std::is_convertible<double, float>{}, "");
+    static_assert(std::is_convertible<float, double>{});
+    static_assert(std::is_convertible<double, float>{});
 
     auto v5 = v0;
     v5 += v1;
@@ -251,6 +277,13 @@ TEST_METHOD(TestVectorScalarMultiply) {
     Assert::AreEqual(v1, v2);
     Assert::AreEqual(v1, Vec4f{2.0f, 4.0f, 6.0f, 8.0f});
     Assert::AreEqual(v1, v0 + v0);
+
+    // Vector of Vectors
+    constexpr Vector<Vec2f, 2> vv1{ Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f} };
+    constexpr auto vv2 = vv1 * 2.0f;
+    static_assert(vv2 == Vector<Vec2f, 2>{Vec2f{2.0f, 4.0f}, Vec2f{6.0f, 8.0f}});
+    Assert::AreEqual(vv2, Vector<Vec2f, 2>{Vec2f{ 2.0f, 4.0f }, Vec2f{ 6.0f, 8.0f }});
+    Assert::AreEqual(2.0f * vv1, vv2);
 }
 
 TEST_METHOD(TestVectorDot) {
@@ -271,6 +304,13 @@ TEST_METHOD(TestVectorDivide) {
     constexpr auto v3 = v2 / 2;
     static_assert(std::is_same<decltype(v3), const Vec3i>{} && v3 == Vec3i{1, 2, 3}, "");
     Assert::AreEqual(v3, Vec3i{1, 2, 3});
+
+    // Vector of Vectors
+    constexpr Vector<Vec2f, 2> vv1{ Vec2f{ 1.0f, 2.0f }, Vec2f{ 3.0f, 4.0f } };
+    constexpr auto vv2 = vv1 / 2.0f;
+    static_assert(vv2 == Vector<Vec2f, 2>{Vec2f{0.5f, 1.0f}, Vec2f{1.5f, 2.0f}});
+    auto vv3 = vv1 / 2.0f;
+    Assert::AreEqual(vv3, Vector<Vec2f, 2>{Vec2f{0.5f, 1.0f}, Vec2f{1.5f, 2.0f}});
 }
 
 TEST_METHOD(TestVectorMagnitude) {

@@ -19,7 +19,7 @@ const wchar_t* const separator<wchar_t>::value = L", ";
 
 template <typename T, size_t N, typename CharT>
 auto& operator<<(std::basic_ostream<CharT>& os, const Vector<T, N>& x) {
-    std::copy(x.begin(), std::prev(x.end()),
+    std::copy(std::cbegin(x), std::prev(std::cend(x)),
               std::ostream_iterator<T, CharT>{os << "{", separator<CharT>::value});
     return os << *std::prev(x.end()) << "}";
 }

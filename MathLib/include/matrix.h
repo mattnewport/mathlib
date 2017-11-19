@@ -11,68 +11,107 @@ namespace mathlib {
 
 template <typename T, size_t M, size_t N>
 class Matrix : private Vector<Vector<T, N>, M> {
+    using base = Vector<Vector<T, N>, M>;
+    explicit Matrix(const base& x) : base{x} {}
+
 public:
     // Since we inherit privately from Vector<Vector<T, N>, M>, this gives us constructors taking M
     // Vector<T, N>s representing the rows of the matrix and taking a single Vector<T, N> used to
     // initialize all M rows.
-    using Vector::Vector;
+    using base::base;
+    Matrix() = default;
 
     // Row and column access
-    auto& operator[](size_t i) noexcept { return e_[i]; }
-    constexpr const auto& operator[](size_t i) const noexcept { return e_[i]; }
-    auto& row(size_t i) noexcept { return e_[i]; }
-    constexpr const auto& row(size_t i) const noexcept { return return e_[i]; }
+    using base::operator[];
+    const auto& row(size_t i) const noexcept { return (*this)[i]; }
     constexpr auto column(size_t i) const noexcept {
         return columnHelper(i, std::make_index_sequence<M>{});
     }
 
     // Element access
-    T& e(size_t r, size_t c) noexcept { return row(r)[c]; }
-    constexpr const T& e(size_t r, size_t c) const noexcept { return e_[r][c]; }
+    constexpr const T& e(size_t r, size_t c) const noexcept { return row(r)[c]; }
 
     // These begin() and end() functions allow a Matrix to be used like a container for element
     // access. Not generally recommended but sometimes useful.
-    auto begin() noexcept { return std::begin(e_[0]); }
-    auto end() noexcept { return std::end(e_[M - 1]); }
-    auto begin() const noexcept { return std::begin(e_[0]); }
-    auto end() const noexcept { return std::end(e_[M - 1]); }
+    constexpr const T* begin() const noexcept { return row(0).begin(); }
+    constexpr const T* end() const noexcept { return row(M - 1).end(); }
 
     // Return a pointer to the raw underlying contiguous element data.
-    constexpr auto data() const noexcept { return e_[0].data(); }
+    using base::data;
 
     // Access the matrix as a const Vector<Vector<T, N>, M>& - not really intended for end user use
     // but helpful to implement freestanding operators and could be useful to users.
     constexpr auto& rows() const noexcept {
-        return static_cast<const Vector<Vector<T, N>, M>&>(*this);
+        return static_cast<const base&>(*this);
     }
 
-    // @= operators - just delegate to Vector via rows() for implementations
-    template <typename U>
-    auto& operator+=(const Matrix<U, M, N>& x) noexcept {
-        rows() += x.rows();
-        return *this;
+    // Equality
+    bool operator==(const Matrix& x) const noexcept { return static_cast<const base&>(*this) == static_cast<const base&>(x); }
+    bool operator!=(const Matrix& x) const noexcept { return !(*this == x); }
+
+    // @= operators - just delegate to Vector for implementations
+    Matrix& operator+=(const Matrix& x) {
+        return static_cast<Matrix&>(static_cast<base&>(*this) += x);
     }
-    template <typename U>
-    auto& operator-=(const Matrix<U, M, N>& x) noexcept {
-        rows() -= x.rows();
-        return *this;
+    Matrix& operator-=(const Matrix& x) {
+        return static_cast<Matrix&>(static_cast<base&>(*this) -= x);
     }
-    template <typename U>
-    auto& operator*=(U s) noexcept {
-        rows() *= s;
-        return *this;
+    Matrix& operator*=(const ScalarType_t<base>& x) {
+        return static_cast<Matrix&>(static_cast<base&>(*this) *= x);
     }
-    template <typename U>
-    auto& operator/=(U s) noexcept {
-        rows() /= s;
-        return *this;
+    Matrix& operator/=(const ScalarType_t<base>& x) {
+        return static_cast<Matrix&>(static_cast<base&>(*this) /= x);
     }
+
+    // Unary and binary operator +/-
+    constexpr Matrix operator+() const noexcept { return Matrix{+static_cast<const base&>(*this)}; }
+    constexpr Matrix operator-() const noexcept { return Matrix{-static_cast<const base&>(*this)}; }
+    constexpr Matrix operator+(const Matrix& x) const noexcept {
+        auto res{*this};
+        return res += x;
+    }
+    constexpr Matrix operator-(const Matrix& x) const noexcept {
+        auto res{*this};
+        return res -= x;
+    }
+
+    // Binary operator *//
+    template <size_t P>
+    constexpr auto operator*(const Matrix<T, N, P>& x) const noexcept {
+        return matMultHelper(x, std::make_index_sequence<M>{});
+    }
+
+    constexpr Matrix operator*(const ScalarType_t<base>& x) const noexcept {
+        auto res{*this};
+        return res *= x;
+    }
+    constexpr Matrix operator/(const ScalarType_t<base>& x) const noexcept {
+        auto res{*this};
+        return res /= x;
+    }
+    friend constexpr auto operator*(const ScalarType_t<base>& s, const Matrix& x) noexcept {
+        return x * s;
+    }
+
+    friend constexpr auto operator*(const Vector<T, M>& v, const Matrix& m) noexcept {
+        return vecMultHelper(v, m, std::make_index_sequence<N>{});
+    }
+
+    static constexpr auto zero() { return Matrix{}; }
+    static constexpr auto ones() { return Matrix{ base::ones() }; }
 
 private:
-    auto& rows() noexcept { return static_cast<Vector<Vector<T, N>, M>&>(*this); }
     template <size_t... Is>
     constexpr auto columnHelper(size_t n, std::index_sequence<Is...>) const noexcept {
-        return Vector<T, M>{e_[Is][n]...};
+        return Vector<T, M>{(*this)[Is][n]...};
+    }
+    template <size_t... Is>
+    static constexpr auto vecMultHelper(const Vector<T, M>& v, const Matrix& m, std::index_sequence<Is...>) noexcept {
+        return Vector<T, N>{v.dot(m.column(Is))...};
+    }
+    template <size_t P, size_t... Is>
+    constexpr auto matMultHelper(const Matrix<T, N, P>& x, std::index_sequence<Is...> is) const noexcept {
+        return Matrix<T, M, P>{((*this)[Is] * x)...};
     }
 };
 
@@ -151,57 +190,6 @@ constexpr auto MatrixFromColumns(const Us&... us) noexcept {
     return transpose(MatrixFromRows(us...));
 }
 
-template <typename T, typename U, size_t M, size_t N>
-constexpr auto operator==(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) noexcept {
-    return x.rows() == y.rows();
-}
-
-template <typename T, size_t M, size_t N>
-constexpr auto operator+(const Matrix<T, M, N>& x) noexcept {
-    return x;
-}
-
-template <typename T, typename U, size_t M, size_t N>
-constexpr auto operator+(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) noexcept {
-    return Matrix<decltype(x[0][0] + y[0][0]), M, N>{x.rows() + y.rows()};
-}
-
-template <typename T, size_t M, size_t N>
-constexpr auto operator-(const Matrix<T, M, N>& x) noexcept {
-    return Matrix<T, M, N>{-x.rows()};
-}
-
-template <typename T, typename U, size_t M, size_t N>
-constexpr auto operator-(const Matrix<T, M, N>& x, const Matrix<U, M, N>& y) noexcept {
-    return Matrix<decltype(x[0][0] - y[0][0]), M, N>{x.rows() - y.rows()};
-}
-
-template <typename T, size_t M, size_t N>
-constexpr auto operator*(const Matrix<T, M, N>& x, T s) noexcept {
-    return Matrix<decltype(x[0][0] * s), M, N>{x.rows() * s};
-}
-
-template <typename T, size_t M, size_t N>
-constexpr auto operator*(T s, const Matrix<T, M, N>& x) noexcept {
-    return x * s;
-}
-
-template <typename T, size_t M, size_t N, size_t... Is>
-constexpr auto operator*(const Vector<T, M, std::index_sequence<Is...>>& v,
-                         const Matrix<T, M, N>& m) noexcept {
-    return Vector<T, N>{(v | m.column(Is))...};
-}
-
-template <typename T, typename U, size_t M, size_t N, size_t P>
-inline auto operator*(const Matrix<T, M, N>& a, const Matrix<U, N, P>& b) noexcept {
-    using ResultType = Matrix<std::common_type_t<T, U>, M, P>;
-    // should be able to do this but it causes an ICE in VS2015 :(
-    // return ResultType{memberwiseBoundArg(std::multiplies<>{}, a.rows(), b)};
-    ResultType res;
-    for (auto r = 0; r < M; ++r) res[r] = a[r] * b;
-    return res;
-}
-
 template <typename T, size_t M, size_t N>
 constexpr auto zeroMatrix() noexcept {
     return Matrix<T, M, N>{};
@@ -243,7 +231,7 @@ inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) no
     const auto xAxis = normalize(cross(up, zAxis));
     const auto yAxis = cross(zAxis, xAxis);
     const auto negEyePos = -eye;
-    const auto d = Vec3f{xAxis | negEyePos, yAxis | negEyePos, zAxis | negEyePos};
+    const auto d = Vec3f{dot(xAxis, negEyePos), dot(yAxis, negEyePos), dot(zAxis, negEyePos)};
     return MatrixFromColumns(Vec4f{xAxis, d.x()}, Vec4f{yAxis, d.y()}, Vec4f{zAxis, d.z()},
                              Vec4f::basis(W));
 }
@@ -251,7 +239,7 @@ inline auto lookAtRhMat4f(const Vec3f& eye, const Vec3f& at, const Vec3f& up) no
 template <typename T>
 inline auto Mat4FromQuat(const Quaternion<T>& q) noexcept {
     const auto sq = q.v().memberwiseMultiply(q.v());
-    const auto sq2 = decltype(q.v()){1} - times2(sq.yzx() + sq.zxy());
+    const auto sq2 = decltype(q.v())::ones() - times2(sq.yzx() + sq.zxy());
     const auto ws = times2(q.v() * q.w());
     const auto x = times2(q.v().memberwiseMultiply(q.v().yzx()));
     using RowVec = Vector<T, 4>;
