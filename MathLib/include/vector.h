@@ -23,6 +23,19 @@
 
 namespace mathlib {
 
+// Declare some useful helpers for working with Vector<T, N>'s (specialized for Vector<T, N> later)
+template <typename T>
+struct VectorDimension;
+
+template <typename T>
+constexpr size_t VectorDimension_v = VectorDimension<T>::value;
+
+template <typename T>
+struct VectorElementType;
+
+template <typename T>
+using VectorElementType_t = typename VectorElementType<T>::type;
+
 namespace detail {
 
 // ValArray exists mainly to take advantage of aggregate initialization without having to define a
@@ -32,67 +45,82 @@ namespace detail {
 // pack expansions for direct array indexing. It doesn't try to provide all functions that might be
 // useful for an end user, rather it just defines functions that can be used as basic building
 // blocks for Vector to provide functions useful to end users.
-template <typename T, size_t N, size_t... Is>
-struct ValArray {
+template <typename Vector, typename T, size_t N, size_t... Is>
+struct VectorBase {
     T e[N];
 
-    constexpr ValArray& operator+=(const ValArray& x) noexcept {
+    constexpr const T& operator[](size_t i) const noexcept { return e[i]; }
+
+    // Op assignment
+    constexpr Vector& operator+=(const Vector& x) noexcept {
         ((e[Is] += x.e[Is]), ...);
-        return *this;
+        return static_cast<Vector&>(*this);
     }
-    constexpr ValArray& operator-=(const ValArray& x) noexcept {
+    constexpr Vector& operator-=(const Vector& x) noexcept {
         ((e[Is] -= x.e[Is]), ...);
-        return *this;
+        return static_cast<Vector&>(*this);
     }
-    constexpr ValArray& operator*=(const T& x) noexcept {
+    constexpr Vector& operator*=(const T& x) noexcept {
         ((e[Is] *= x), ...);
-        return *this;
+        return static_cast<Vector&>(*this);
     }
-    constexpr ValArray& operator/=(const T& x) noexcept {
+    constexpr Vector& operator/=(const T& x) noexcept {
         ((e[Is] /= x), ...);
-        return *this;
+        return static_cast<Vector&>(*this);
     }
 
-    constexpr ValArray operator-() const noexcept { return ValArray{{-e[Is]...}}; }
+    // Unary +/-
+    constexpr Vector operator-() const noexcept { return Vector{-e[Is]...}; }
+    constexpr Vector operator+() const noexcept { return Vector{+e[Is]...}; }
 
-    constexpr bool operator==(const ValArray& x) const noexcept {
+    // Binary +/-
+    constexpr Vector operator+(const Vector& x) const noexcept {
+        return Vector{(e[Is] + x.e[Is])...};
+    }
+    constexpr Vector operator-(const Vector& x) const noexcept {
+        return Vector{(e[Is] - x.e[Is])...};
+    }
+
+    // Comparison
+    constexpr bool operator==(const Vector& x) const noexcept {
         return (... && (e[Is] == x.e[Is]));
     }
+    constexpr bool operator!=(const Vector& x) const noexcept { return !(*this == x); }
+    
+    template <typename F>
+    constexpr auto mapHelper(F&& f) const noexcept {
+        return Vector{f(e[Is])...};
+    }
 
     template <typename F>
-    friend constexpr auto map(F&& f, const ValArray& x) noexcept {
-        return ValArray{{f(x.e[Is])...}};
+    constexpr auto mapHelper(F&& f, const Vector& x) const noexcept {
+        return Vector{f(e[Is], x.e[Is])...};
     }
 
-    template <typename F>
-    friend constexpr auto map(F&& f, const ValArray& x, const ValArray& y) noexcept {
-        return ValArray{{f(x.e[Is], y.e[Is])...}};
+    constexpr Vector memberwiseMultiply(const Vector& x) const noexcept {
+        return Vector{e[Is] * x.e[Is]...};
     }
 
-    constexpr ValArray memberwiseMultiply(const ValArray& x) const noexcept {
-        return ValArray{{e[Is] * x.e[Is]...}};
-    }
-
-    constexpr auto dot(const ValArray& x) const noexcept {
-        const auto mm = ValArray{{e[Is] * x.e[Is]...}};
+    constexpr T dot(const Vector& x) const noexcept {
+        const auto mm = VectorBase{{e[Is] * x.e[Is]...}};
         return (... + (mm.e[Is]));
     }
 };
 
-template <typename T, size_t N>
-struct MakeValArray {
+template <typename Vector>
+struct MakeVectorBase {
 private:
     template <size_t... Is>
     static constexpr auto make(std::index_sequence<Is...>) {
-        return ValArray<T, N, Is...>{};
+        return VectorBase<Vector, VectorElementType_t<Vector>, sizeof...(Is), Is...>{};
     }
 
 public:
-    using type = decltype(make(std::make_index_sequence<N>{}));
+    using type = decltype(make(std::make_index_sequence<VectorDimension_v<Vector>>{}));
 };
 
-template <typename T, size_t N>
-using MakeValArray_t = typename MakeValArray<T, N>::type;
+template <typename Vector>
+using MakeVectorBase_t = typename MakeVectorBase<Vector>::type;
 
 }  // namespace detail
 
@@ -107,21 +135,19 @@ template <typename T>
 using ScalarType_t = typename ScalarType<T>::type;
 
 template <typename T, size_t N>
-class Vector {
-    using data_t = detail::MakeValArray_t<T, N>;
+class Vector : private detail::MakeVectorBase_t<Vector<T, N>> {
+    using base = detail::MakeVectorBase_t<Vector<T, N>>;
+    friend base;
     using IS = std::make_index_sequence<N>;
-
-    constexpr Vector(const data_t& es_) noexcept : es{es_} {}
-    data_t es;
 
     // Helper constructors
     // From a const T* of N contiguous elements
     template <size_t... Is>
-    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : es{ { ts[Is]... } } {}
+    explicit constexpr Vector(const T* ts, std::index_sequence<Is...>) noexcept : base{ { ts[Is]... } } {}
     // From a Vector<U, M>
     template <typename U, size_t M, size_t... Is>
     explicit constexpr Vector(const Vector<U, M>& x, std::index_sequence<Is...>) noexcept
-        : es{ { T(x[Is])... } } {}
+        : base{ { T(x[Is])... } } {}
 
     template <size_t... Is>
     static constexpr auto basisImpl(size_t i, std::index_sequence<Is...>) noexcept {
@@ -135,7 +161,7 @@ public:
     template <typename... Ts, typename = std::enable_if_t<
                                   ((sizeof...(Ts) == N) &&
                                    (std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>))>>
-    constexpr Vector(const Ts&... ts) noexcept : es{{ts...}} {}
+    constexpr Vector(const Ts&... ts) noexcept : base{{ts...}} {}
     // Templated explicit conversion constructor from a Vector<U, N>
     template <typename U>
     constexpr explicit Vector(const Vector<U, N>& x) noexcept : Vector{x, IS{}} {}
@@ -145,38 +171,37 @@ public:
     // Templated explicit conversion constructor from a Vector<T, N-1> and a scalar T s
     constexpr explicit Vector(const Vector<T, N - 1>& x, const T& s) noexcept
         : Vector{x, std::make_index_sequence<N - 1>{}} {
-        es.e[N - 1] = s;
+        this->e[N - 1] = s;
     }
     // Explicit constructor from a pointer to N or more Ts
     constexpr explicit Vector(const T* p) noexcept : Vector{p, IS{}} {}
 
     // Generic element access
-    constexpr auto& operator[](size_t i) noexcept { return es.e[i]; }
-    constexpr const auto& operator[](size_t i) const noexcept { return es.e[i]; }
+    using base::operator[];
 
     // Tuple style element access
     template <size_t I>
     constexpr T& get() noexcept {
-        return es.e[I];
+        return this->e[I];
     }
     template <size_t I>
     constexpr const T& get() const noexcept {
-        return es.e[I];
+        return this->e[I];
     }
 
     // Named element access through x(), y(), z(), w() functions.
-    constexpr T x() const noexcept { return es.e[0]; }
+    constexpr T x() const noexcept { return this->e[0]; }
     constexpr T y() const noexcept {
         static_assert(N > 1);
-        return es.e[1];
+        return this->e[1];
     }
     constexpr T z() const noexcept {
         static_assert(N > 2);
-        return es.e[2];
+        return this->e[2];
     }
     constexpr T w() const noexcept {
         static_assert(N > 3);
-        return es.e[3];
+        return this->e[3];
     }
 
     // Swizzle members of Vector: call with v.swizzled<X, Y, Z, W> where the order of X, Y, Z, W
@@ -187,7 +212,7 @@ public:
     template <size_t... Is>
     constexpr auto swizzled() const noexcept {
         using ReturnType = std::conditional_t<sizeof...(Is) == 1, T, Vector<T, sizeof...(Is)>>;
-        return ReturnType{es.e[Is]...};
+        return ReturnType{this->e[Is]...};
     }
 
     // Common swizzles
@@ -199,107 +224,68 @@ public:
 
     // These begin() and end() functions allow a Vector to be used like a container for element
     // access. Not generally recommended but sometimes useful.
-    constexpr T* begin() noexcept { return std::begin(es.e); }
-    constexpr T* end() noexcept { return std::end(es.e); }
-    constexpr const T* begin() const noexcept { return std::cbegin(es.e); }
-    constexpr const T* end() const noexcept { return std::cend(es.e); }
+    constexpr T* begin() noexcept { return std::begin(this->e); }
+    constexpr T* end() noexcept { return std::end(this->e); }
+    constexpr const T* begin() const noexcept { return std::cbegin(this->e); }
+    constexpr const T* end() const noexcept { return std::cend(this->e); }
 
     // Return a pointer to the raw underlying contiguous element data.
-    constexpr T* data() noexcept { return es.e; }
-    constexpr const T* data() const noexcept { return es.e; }
+    constexpr T* data() noexcept { return this->e; }
+    constexpr const T* data() const noexcept { return this->e; }
 
     // @=() op assignment operators
-    constexpr Vector& operator+=(const Vector& x) noexcept {
-        es += x.es;
-        return *this;
-    }
+    using base::operator+=;
+    using base::operator-=;
+    using base::operator*=;
+    using base::operator/=;
 
-    constexpr Vector& operator-=(const Vector& x) noexcept {
-        es -= x.es;
-        return *this;
-    }
-
-    constexpr Vector& operator*=(const ScalarType_t<T>& s) noexcept {
-        es *= s;
-        return *this;
-    }
-
-    constexpr Vector& operator/=(const ScalarType_t<T>& s) noexcept {
-        if constexpr (std::is_floating_point<ScalarType_t<T>>::value) {
-            auto m = T{1} / s;
-            es *= m;
-        } else {
-            es /= s;
-        }
-        return *this;
-    }
-
-    constexpr auto operator+() const noexcept { return *this; }
-
-    constexpr auto operator-() const noexcept { return Vector{-es}; }
-
-    friend constexpr auto operator+(Vector x, const Vector& y) noexcept {
-        x.es += y.es;
-        return x;
-    }
-
-    friend constexpr auto operator-(Vector x, const Vector& y) noexcept {
-        x.es -= y.es;
-        return x;
-    }
+    // Unary and binary operator +/-
+    using base::operator+;
+    using base::operator-;
 
     friend constexpr auto operator*(Vector x, const ScalarType_t<T>& s) noexcept {
-        x.es *= s;
-        return x;
+        return x *= s;
     }
 
     friend constexpr auto operator/(Vector x, const ScalarType_t<T>& s) noexcept {
-        x.es /= s;
-        return x;
+        return x /= s;
     }
 
     friend constexpr auto operator*(const T& s, const Vector& x) noexcept { return x * s; }
 
     // Multiply elements of Vectors x and y memberwise
     // e.g. memberwiseMultiply(Vec3f x, Vec3f y) == Vec3f{x.x * y.x, x.y * y.y, x.z * y.z}
-    constexpr auto memberwiseMultiply(const Vector& x) const noexcept {
-        return Vector{es.memberwiseMultiply(x.es)};
-    }
+    using base::memberwiseMultiply;
 
-    friend constexpr auto dot(const Vector& x, const Vector& y) noexcept { return x.es.dot(y.es); }
+    friend constexpr auto dot(const Vector& x, const Vector& y) noexcept { return x.dot(y); }
 
     template <typename F>
     friend constexpr auto map(F f, const Vector& x) noexcept {
-        return Vector{map(f, x.es)};
+        return Vector{x.mapHelper(f)};
     }
 
     friend constexpr auto abs(const Vector& x) noexcept {
-        return Vector{map([](const T& x) { return std::abs(x); }, x.es)};
+        return Vector{x.mapHelper([](const T& x) { return std::abs(x); })};
     }
 
     friend constexpr auto min(const Vector& x, const Vector& y) noexcept {
-        return Vector{map([](const T& x, const T& y) { return std::min<T>(x, y); }, x.es, y.es)};
+        return Vector{x.mapHelper([](const T& x, const T& y) { return std::min<T>(x, y); }, y)};
     }
 
     friend constexpr auto max(const Vector& x, const Vector& y) noexcept {
-        return Vector{map([](const T& x, const T& y) { return std::max<T>(x, y); }, x.es, y.es)};
+        return Vector{x.mapHelper([](const T& x, const T& y) { return std::max<T>(x, y); }, y)};
     }
 
     friend constexpr auto saturate(const Vector& x) noexcept {
-        return Vector{map(saturate<T>, x.es)};
+        return Vector{x.mapHelper(saturate<T>)};
     }
 
     friend constexpr auto clamp(const Vector<T, N>& x, const T& a, const T& b) noexcept {
-        return Vector{map([=](const T& y) { return std::clamp(y, a, b); }, x.es)};
+        return Vector{x.mapHelper([=](const T& y) { return std::clamp(y, a, b); })};
     }
 
-    friend constexpr bool operator==(const Vector& x, const Vector& y) noexcept {
-        return x.es == y.es;
-    }
-
-    friend constexpr bool operator!=(const Vector& x, const Vector& y) noexcept {
-        return !(x.es == y.es);
-    }
+    using base::operator==;
+    using base::operator!=;
 
     static constexpr auto zero() { return Vector{}; }
     static constexpr auto basis(size_t i) { return basisImpl(i, IS{}); }
@@ -324,14 +310,8 @@ struct IsVector : std::false_type {};
 template <typename T, size_t N>
 struct IsVector<Vector<T, N>> : std::true_type {};
 
-template <typename T>
-struct VectorDimension;
-
 template <typename T, size_t N>
 struct VectorDimension<Vector<T, N>> : std::integral_constant<size_t, N> {};
-
-template <typename T>
-struct VectorElementType;
 
 template <typename T, size_t N>
 struct VectorElementType<Vector<T, N>> {

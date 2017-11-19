@@ -145,9 +145,7 @@ TEST_METHOD(TestVectorMemberAccess) {
 
     Vec4f v1{};
     Assert::AreEqual(v1.x(), 0.0f);
-    v1[0] = 1.0f;
-    Assert::AreEqual(v1.x(), 1.0f);
-    Assert::AreEqual(v1[0], 1.0f);
+    Assert::AreEqual(v1[0], 0.0f);
 
     // Tuple style / structured bindings
     static_assert(v0.get<0>() == 1.0f && v0.get<1>() == 2.0f && v0.get<2>() == 3.0f);
