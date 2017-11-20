@@ -28,6 +28,15 @@ template <typename T>
 struct IsVector : std::false_type {};
 
 template <typename T>
+constexpr bool IsVector_v = IsVector<std::decay_t<T>>::value;
+
+template <typename... Ts>
+constexpr bool AllVectors_v = std::conjunction_v<IsVector<std::decay_t<Ts>>...>;
+
+template <typename T, typename... Ts>
+constexpr bool AllOfType_v = std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>;
+
+template <typename T>
 struct VectorDimension;
 
 template <typename T>
@@ -37,7 +46,7 @@ template <typename T>
 struct VectorElementType;
 
 template <typename T>
-using VectorElementType_t = typename VectorElementType<T>::type;
+using VectorElementType_t = typename VectorElementType<std::decay_t<T>>::type;
 
 template <typename T>
 struct ScalarType {
@@ -64,6 +73,9 @@ struct VectorBase {
     T e[N];
 
     constexpr const T& operator[](size_t i) const noexcept { return e[i]; }
+
+    // Return a (const) pointer to the raw underlying contiguous element data.
+    constexpr const T* data() const noexcept { return e; }
 
     // Op assignment
     constexpr Vector& operator+=(const Vector& x) noexcept {
@@ -140,9 +152,9 @@ struct VectorBase {
     static constexpr Vector basis(size_t i) noexcept { return Vector{T(i == Is)...}; }
     static constexpr Vector ones() noexcept {
         if constexpr (std::is_same_v<T, ScalarType_t<T>>)
-            return Vector{T((Is, 1))...};
+            return Vector{T(((void)Is, 1))...};
         else
-            return Vector{(Is, T::ones())...};
+            return Vector{((void)Is, T::ones())...};
     }
 };
 
@@ -208,6 +220,9 @@ public:
     // Generic element access
     using base::operator[];
 
+    // Data pointer access
+    using base::data;
+
     // Tuple style element access
     template <size_t I>
     constexpr const T& get() const noexcept {
@@ -251,9 +266,6 @@ public:
     // access. Not generally recommended but sometimes useful. Note no non-const versions provided.
     constexpr auto begin() const noexcept { return std::cbegin(this->e); }
     constexpr auto end() const noexcept { return std::cend(this->e); }
-
-    // Return a (const) pointer to the raw underlying contiguous element data.
-    constexpr const T* data() const noexcept { return this->e; }
 
     // Equality
     using base::operator==;

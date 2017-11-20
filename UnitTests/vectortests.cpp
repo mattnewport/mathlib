@@ -53,7 +53,17 @@ inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
 template<typename T> struct Debug;
 
 TEST_CLASS(VectorUnitTests) {
-public :
+public:
+
+    TEST_METHOD(TestTypeTraits) {
+        static_assert(IsVector_v<Vec4f>);
+        static_assert(IsVector_v<decltype(Vec4f{})>);
+        static_assert(std::is_same_v<VectorElementType_t<Vec4f>, float>);
+        static_assert(VectorDimension_v<Vec4f> == 4);
+        static_assert(AllVectors_v<Vec4f, Vec3f, Vec3i>);
+        static_assert(AllOfType_v<Vec3f, Vec3f, Vector<float, 3>, Vec3f>);
+        static_assert(!AllOfType_v<Vec3f, Vec4f, Vector<float, 3>>);
+    }
 
 TEST_METHOD(TestVectorConstructors){
     using namespace std;

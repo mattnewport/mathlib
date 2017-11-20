@@ -9,17 +9,51 @@
 
 namespace mathlib {
 
+// Useful type traits for working with Matrices (declarations)
+template <typename T>
+struct IsMatrix : std::false_type {};
+
+template <typename T>
+struct MatrixRows;
+
+template <typename T>
+struct MatrixColumns;
+
+template <typename T>
+struct MatrixElementType;
+
+template <typename T>
+using MatrixElementType_t = typename MatrixElementType<T>::type;
+
+namespace detail {
+
+template <typename Matrix>
+struct MakeMatrixBase;
+
+template <typename Matrix>
+using MakeMatrixBase_t = typename MakeMatrixBase<Matrix>::type;
+
+}
+
 template <typename T, size_t M, size_t N>
-class Matrix : private Vector<Vector<T, N>, M> {
-    using base = Vector<Vector<T, N>, M>;
+class Matrix : private detail::MakeMatrixBase_t<Matrix<T, M, N>> {
+    using base = detail::MakeMatrixBase_t<Matrix<T, M, N>>;
+    friend base;
+    using RowType_t = Vector<T, N>;
     explicit Matrix(const base& x) : base{x} {}
 
+    // Helper function for checking constructor arguments
+    template <typename... Rs>
+    static constexpr bool MofRowType(const Rs&... rs) noexcept {
+        return ((sizeof...(Rs) == M) && AllOfType_v<RowType_t, Rs...>);
+    }
+
 public:
-    // Since we inherit privately from Vector<Vector<T, N>, M>, this gives us constructors taking M
-    // Vector<T, N>s representing the rows of the matrix and taking a single Vector<T, N> used to
-    // initialize all M rows.
-    using base::base;
-    Matrix() = default;
+    constexpr Matrix() noexcept = default;
+
+    // Standard constructor taking a sequence of exactly N row vectors.
+    template <typename... Rs, typename = std::enable_if_t<MofRowType(Rs{}...)>>
+    constexpr Matrix(const Rs&... rs) noexcept : base{{rs...}} {}
 
     // Row and column access
     using base::operator[];
@@ -27,9 +61,6 @@ public:
     constexpr auto column(size_t i) const noexcept {
         return columnHelper(i, std::make_index_sequence<M>{});
     }
-
-    // Element access
-    constexpr const T& e(size_t r, size_t c) const noexcept { return row(r)[c]; }
 
     // These begin() and end() functions allow a Matrix to be used like a container for element
     // access. Not generally recommended but sometimes useful.
@@ -39,60 +70,31 @@ public:
     // Return a pointer to the raw underlying contiguous element data.
     using base::data;
 
-    // Access the matrix as a const Vector<Vector<T, N>, M>& - not really intended for end user use
-    // but helpful to implement freestanding operators and could be useful to users.
-    constexpr auto& rows() const noexcept {
-        return static_cast<const base&>(*this);
-    }
-
     // Equality
-    bool operator==(const Matrix& x) const noexcept { return static_cast<const base&>(*this) == static_cast<const base&>(x); }
-    bool operator!=(const Matrix& x) const noexcept { return !(*this == x); }
+    using base::operator==;
+    using base::operator!=;
 
     // @= operators - just delegate to Vector for implementations
-    Matrix& operator+=(const Matrix& x) {
-        return static_cast<Matrix&>(static_cast<base&>(*this) += x);
-    }
-    Matrix& operator-=(const Matrix& x) {
-        return static_cast<Matrix&>(static_cast<base&>(*this) -= x);
-    }
-    Matrix& operator*=(const ScalarType_t<base>& x) {
-        return static_cast<Matrix&>(static_cast<base&>(*this) *= x);
-    }
-    Matrix& operator/=(const ScalarType_t<base>& x) {
-        return static_cast<Matrix&>(static_cast<base&>(*this) /= x);
-    }
+    using base::operator+=;
+    using base::operator-=;
+    using base::operator*=;
+    using base::operator/=;
 
     // Unary and binary operator +/-
-    constexpr Matrix operator+() const noexcept { return Matrix{+static_cast<const base&>(*this)}; }
-    constexpr Matrix operator-() const noexcept { return Matrix{-static_cast<const base&>(*this)}; }
-    constexpr Matrix operator+(const Matrix& x) const noexcept {
-        auto res{*this};
-        return res += x;
-    }
-    constexpr Matrix operator-(const Matrix& x) const noexcept {
-        auto res{*this};
-        return res -= x;
-    }
+    using base::operator+;
+    using base::operator-;
 
     // Binary operator *//
+    using base::operator*;
+    using base::operator/;
+
     template <size_t P>
     constexpr auto operator*(const Matrix<T, N, P>& x) const noexcept {
         return matMultHelper(x, std::make_index_sequence<M>{});
     }
-
-    constexpr Matrix operator*(const ScalarType_t<base>& x) const noexcept {
-        auto res{*this};
-        return res *= x;
-    }
-    constexpr Matrix operator/(const ScalarType_t<base>& x) const noexcept {
-        auto res{*this};
-        return res /= x;
-    }
-    friend constexpr auto operator*(const ScalarType_t<base>& s, const Matrix& x) noexcept {
+    friend constexpr auto operator*(const T& s, const Matrix& x) noexcept {
         return x * s;
     }
-
     friend constexpr auto operator*(const Vector<T, M>& v, const Matrix& m) noexcept {
         return vecMultHelper(v, m, std::make_index_sequence<N>{});
     }
@@ -117,35 +119,47 @@ private:
 
 using Mat4f = Matrix<float, 4, 4>;
 
-// Useful type traits for working with Matrices
-template <typename T>
-struct IsMatrix : std::false_type {};
-
+// Useful type traits for working with Matrices (specializations)
 template <typename T, size_t M, size_t N>
 struct IsMatrix<Matrix<T, M, N>> : std::true_type {};
-
-template <typename T>
-struct MatrixRows;
 
 template <typename T, size_t M, size_t N>
 struct MatrixRows<Matrix<T, M, N>> : std::integral_constant<size_t, M> {};
 
 template <typename T>
-struct MatrixColumns;
+constexpr size_t MatrixRows_v = MatrixRows<T>::value;
 
 template <typename T, size_t M, size_t N>
 struct MatrixColumns<Matrix<T, M, N>> : std::integral_constant<size_t, N> {};
 
 template <typename T>
-struct MatrixElementType;
+constexpr size_t MatrixColumns_v = MatrixColumns<T>::value;
 
 template <typename T, size_t M, size_t N>
 struct MatrixElementType<Matrix<T, M, N>> {
     using type = T;
 };
 
-template <typename T>
-using MatrixElementType_t = typename MatrixElementType<T>::type;
+template <typename T, size_t M, size_t N>
+struct ScalarType<Matrix<T, M, N>> {
+    using type = T;
+};
+
+namespace detail {
+
+template <typename Matrix>
+struct MakeMatrixBase {
+private:
+    template <size_t... Is>
+    static constexpr auto make(std::index_sequence<Is...>) {
+        return VectorBase<Matrix, Vector<MatrixElementType_t<Matrix>, MatrixColumns<Matrix>::value>, sizeof...(Is), Is...>{};
+    }
+
+public:
+    using type = decltype(make(std::make_index_sequence<MatrixRows<Matrix>::value>{}));
+};
+
+}
 
 template <typename T, size_t M, size_t N>
 inline auto MatrixFromDataPointer(const T* p) noexcept {
@@ -160,11 +174,10 @@ inline auto MatrixFromDataPointer(const MatrixElementType_t<M>* p) noexcept {
                                  MatrixColumns<M>::value>(p);
 }
 
-template <typename... Us>
-constexpr auto MatrixFromRows(Us&&... us) noexcept {
-    using RowVectorType = std::common_type_t<std::remove_reference_t<Us>...>;
-    return Matrix<VectorElementType_t<RowVectorType>, sizeof...(Us),
-                  VectorDimension<RowVectorType>::value>{us...};
+template <typename... Rs>
+constexpr auto MatrixFromRows(const Rs&... rs) noexcept {
+    using RowType_t = std::common_type_t<std::decay_t<Rs>...>;
+    return Matrix<VectorElementType_t<RowType_t>, sizeof...(Rs), VectorDimension_v<RowType_t>>{rs...};
 }
 
 // Handy to have this concrete version that can deduce the type of the arguments, e.g. you can do:

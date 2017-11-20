@@ -68,14 +68,23 @@ inline auto areNearlyEqual(const Matrix<T, M, N>& x, const Matrix<T, M, N>& y, c
 
 TEST_CLASS(MatrixUnitTests){
 public:
+    TEST_METHOD(TestMatrixTypeTraits) {
+        static_assert(std::is_same_v<ScalarType_t<Mat4f>, float>);
+    }
+
+    TEST_METHOD(TextMatrixConstruction) {
+        constexpr auto m7 = Matrix<float, 2, 3>{Vec3f{1.0f, 2.0f, 3.0f}, Vec3f{4.0f, 5.0f, 6.0f}};
+    }
+
     TEST_METHOD(TestMatrixBasics) {
+        constexpr auto m9 = Matrix<float, 2, 3>{ Vec3f{1.0f, 2.0f, 3.0f}, Vec3f{4.0f, 5.0f, 6.0f} };
         const auto m0 = MatrixFromRows(Vec4f{1.0f, 2.0f, 3.0f, 4.0f}, Vec4f{5.0f, 6.0f, 7.0f, 8.0f},
                                        Vec4f{9.0f, 10.0f, 11.0f, 12.0f});
         const auto m1 = MatrixFromColumns(Vec3f{1.0f, 5.0f, 9.0f}, Vec3f{2.0f, 6.0f, 10.0f},
                                           Vec3f{3.0f, 7.0f, 11.0f}, Vec3f{4.0f, 8.0f, 12.0f});
         Assert::AreEqual(m0, m1);
-        Assert::IsTrue(m0.e(0, 0) == m0[0][0] && m0[0][0] == 1.0f);
-        Assert::IsTrue(m0.e(1, 2) == m0[1][2] && m0[1][2] == 7.0f);
+        Assert::IsTrue(m0[0][0] == 1.0f);
+        Assert::IsTrue(m0[1][2] == 7.0f);
 
         auto m7 = m0;
         m7 += m0;
