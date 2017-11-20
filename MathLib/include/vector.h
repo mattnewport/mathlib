@@ -199,9 +199,8 @@ public:
     constexpr Vector() noexcept = default;
     constexpr Vector(const Vector&) noexcept = default;
     // Standard constructor taking a sequence of exactly N Ts.
-    template <typename... Ts, typename = std::enable_if_t<
-                                  ((sizeof...(Ts) == N) &&
-                                   (std::conjunction_v<std::is_same<T, std::decay_t<Ts>>...>))>>
+    template <typename... Ts,
+              typename = std::enable_if_t<(sizeof...(Ts) == N) && AllOfType_v<T, Ts...>>>
     constexpr Vector(const Ts&... ts) noexcept : base{{ts...}} {}
     // Templated explicit conversion constructor from a Vector<U, N>
     template <typename U>

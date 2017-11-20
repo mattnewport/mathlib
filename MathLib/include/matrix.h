@@ -33,7 +33,7 @@ struct MakeMatrixBase;
 template <typename Matrix>
 using MakeMatrixBase_t = typename MakeMatrixBase<Matrix>::type;
 
-}
+}  // namespace detail
 
 template <typename T, size_t M, size_t N>
 class Matrix : private detail::MakeMatrixBase_t<Matrix<T, M, N>> {
@@ -92,15 +92,13 @@ public:
     constexpr auto operator*(const Matrix<T, N, P>& x) const noexcept {
         return matMultHelper(x, std::make_index_sequence<M>{});
     }
-    friend constexpr auto operator*(const T& s, const Matrix& x) noexcept {
-        return x * s;
-    }
+    friend constexpr auto operator*(const T& s, const Matrix& x) noexcept { return x * s; }
     friend constexpr auto operator*(const Vector<T, M>& v, const Matrix& m) noexcept {
         return vecMultHelper(v, m, std::make_index_sequence<N>{});
     }
 
     static constexpr auto zero() { return Matrix{}; }
-    static constexpr auto ones() { return Matrix{ base::ones() }; }
+    static constexpr auto ones() { return Matrix{base::ones()}; }
 
 private:
     template <size_t... Is>
@@ -108,11 +106,13 @@ private:
         return Vector<T, M>{(*this)[Is][n]...};
     }
     template <size_t... Is>
-    static constexpr auto vecMultHelper(const Vector<T, M>& v, const Matrix& m, std::index_sequence<Is...>) noexcept {
+    static constexpr auto vecMultHelper(const Vector<T, M>& v, const Matrix& m,
+                                        std::index_sequence<Is...>) noexcept {
         return Vector<T, N>{v.dot(m.column(Is))...};
     }
     template <size_t P, size_t... Is>
-    constexpr auto matMultHelper(const Matrix<T, N, P>& x, std::index_sequence<Is...> is) const noexcept {
+    constexpr auto matMultHelper(const Matrix<T, N, P>& x, std::index_sequence<Is...> is) const
+        noexcept {
         return Matrix<T, M, P>{((*this)[Is] * x)...};
     }
 };
@@ -152,14 +152,15 @@ struct MakeMatrixBase {
 private:
     template <size_t... Is>
     static constexpr auto make(std::index_sequence<Is...>) {
-        return VectorBase<Matrix, Vector<MatrixElementType_t<Matrix>, MatrixColumns<Matrix>::value>, sizeof...(Is), Is...>{};
+        return VectorBase<Matrix, Vector<MatrixElementType_t<Matrix>, MatrixColumns<Matrix>::value>,
+                          sizeof...(Is), Is...>{};
     }
 
 public:
     using type = decltype(make(std::make_index_sequence<MatrixRows<Matrix>::value>{}));
 };
 
-}
+}  // namespace detail
 
 template <typename T, size_t M, size_t N>
 inline auto MatrixFromDataPointer(const T* p) noexcept {
@@ -177,7 +178,8 @@ inline auto MatrixFromDataPointer(const MatrixElementType_t<M>* p) noexcept {
 template <typename... Rs>
 constexpr auto MatrixFromRows(const Rs&... rs) noexcept {
     using RowType_t = std::common_type_t<std::decay_t<Rs>...>;
-    return Matrix<VectorElementType_t<RowType_t>, sizeof...(Rs), VectorDimension_v<RowType_t>>{rs...};
+    return Matrix<VectorElementType_t<RowType_t>, sizeof...(Rs), VectorDimension_v<RowType_t>>{
+        rs...};
 }
 
 // Handy to have this concrete version that can deduce the type of the arguments, e.g. you can do:
