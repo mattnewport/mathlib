@@ -16,6 +16,7 @@ public:
         : base{x, y, z, w} {}
     constexpr Quaternion(const Vector<T, 4>& v) noexcept : base{v[0], v[1], v[2], v[3]} {}
     constexpr Quaternion(const Vector<T, 3>& v, const T& s) noexcept : base{v[0], v[1], v[2], s} {}
+    constexpr Quaternion(const T* x) noexcept : base{x[0], x[1], x[2], x[3]} {}
 
     using base::operator[];
     constexpr auto x() const noexcept { return this->e[0]; }

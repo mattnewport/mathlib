@@ -44,7 +44,7 @@ class Matrix : private detail::MakeMatrixBase_t<Matrix<T, M, N>> {
 
     // Helper function for checking constructor arguments
     template <typename... Rs>
-    static constexpr bool MofRowType(const Rs&... rs) noexcept {
+    static constexpr bool MofRowType(const Rs&...) noexcept {
         return ((sizeof...(Rs) == M) && AllOfType_v<RowType_t, Rs...>);
     }
 
@@ -111,7 +111,7 @@ private:
         return Vector<T, N>{v.dot(m.column(Is))...};
     }
     template <size_t P, size_t... Is>
-    constexpr auto matMultHelper(const Matrix<T, N, P>& x, std::index_sequence<Is...> is) const
+    constexpr auto matMultHelper(const Matrix<T, N, P>& x, std::index_sequence<Is...>) const
         noexcept {
         return Matrix<T, M, P>{((*this)[Is] * x)...};
     }

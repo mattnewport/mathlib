@@ -115,8 +115,8 @@ struct VectorBase {
         if constexpr (std::is_floating_point_v<ScalarType_t<Vector>>) {
             const auto s = ScalarType_t<Vector>{1} / x;
             return Vector{(e[Is] * s)...};
-        }
-        return Vector{(e[Is] / x)...};
+        } else 
+            return Vector{(e[Is] / x)...};
     }
 
     // Comparison
