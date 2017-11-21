@@ -5,48 +5,48 @@
 namespace mathlib {
 
 template <typename T>
-class Quaternion : private Vector<T, 4> {
+class Quaternion : detail::MakeVectorBase_t<Quaternion<T>> {
+    using base = detail::MakeVectorBase_t<Quaternion<T>>;
+    friend base;
+    using IS = std::make_index_sequence<4>;
+
 public:
-    using Vector_t = Vector<T, 4>;
-    using Vector_t::Vector_t;
+    constexpr Quaternion() noexcept = default;
+    constexpr Quaternion(const T& x, const T& y, const T& z, const T& w) noexcept
+        : base{x, y, z, w} {}
+    constexpr Quaternion(const Vector<T, 4>& v) noexcept : base{v[0], v[1], v[2], v[3]} {}
+    constexpr Quaternion(const Vector<T, 3>& v, const T& s) noexcept : base{v[0], v[1], v[2], s} {}
 
-    Quaternion() = default;
-    constexpr Quaternion(const Vector_t& v) : Vector_t{ v } {}
+    using base::operator[];
+    constexpr auto x() const noexcept { return this->e[0]; }
+    constexpr auto y() const noexcept { return this->e[1]; }
+    constexpr auto z() const noexcept { return this->e[2]; }
+    constexpr auto w() const noexcept { return this->e[3]; }
+    constexpr auto v() const noexcept { return Vector<T, 3>{x(), y(), z()}; }
+    constexpr auto s() const noexcept { return w(); }
 
-    constexpr auto x() const noexcept { return Vector_t::x(); }
-    constexpr auto y() const noexcept { return Vector_t::y(); }
-    constexpr auto z() const noexcept { return Vector_t::z(); }
-    constexpr auto w() const noexcept { return Vector_t::w(); }
-    constexpr auto v() const noexcept { return Vector_t::xyz(); }
-    constexpr auto s() const noexcept { return Vector_t::w(); }
+    using base::data;
 
-    constexpr auto data() const noexcept { return Vector_t::data(); }
+    friend constexpr auto norm(const Quaternion& x) noexcept { return x.magnitude(); }
 
-    friend constexpr auto norm(const Quaternion& x) noexcept {
-        return magnitude(x.vec4());
-    }
+    using base::operator==;
+    using base::operator!=;
 
-    friend constexpr auto operator==(const Quaternion& x, const Quaternion& y) noexcept {
-        return x.vec4() == y.vec4();
-    }
+    using base::operator+;
+    using base::operator-;
 
-    friend constexpr auto operator!=(const Quaternion& x, const Quaternion& y) noexcept {
-        return x.vec4() != y.vec4();
-    }
+    static constexpr Quaternion identity() noexcept { return Quaternion{T(0), T(0), T(0), T(1)}; }
 
-    friend constexpr Quaternion operator+(const Quaternion& x, const Quaternion& y) noexcept {
-        return Quaternion{ x.vec4() + y.vec4() };
-    }
+    constexpr auto vec4() const noexcept { return Vector<T, 4>{x(), y(), z(), w()}; }
+};
 
-    friend constexpr Quaternion operator-(const Quaternion& x, const Quaternion& y) noexcept {
-        return Quaternion{ x.vec4() - y.vec4() };
-    }
+// Specializations of type traits for working with Quaternions
+template <typename T>
+struct VectorDimension<Quaternion<T>> : std::integral_constant<size_t, 4> {};
 
-    static constexpr Quaternion identity() noexcept {
-        return Quaternion{T(0), T(0), T(0), T(1)};
-    }
-
-    constexpr auto vec4() const noexcept { return static_cast<const Vector<T, 4>&>(*this); }
+template <typename T>
+struct VectorElementType<Quaternion<T>> {
+    using type = T;
 };
 
 using Quatf = Quaternion<float>;
@@ -64,21 +64,21 @@ inline auto QuaternionFromAxisAngle(const Vector<U, 3>& axis, V angle) noexcept 
 }
 
 // operator~() is used for Quaternion conjugate, seems less potential for confusion than op*()
-template<typename T>
+template <typename T>
 constexpr auto operator~(const Quaternion<T>& x) noexcept {
     return Quaternion<T>{-x.v(), x.s()};
 }
 
-template <typename T, typename U>
-constexpr auto operator*(const Quaternion<T>& x, const Quaternion<U>& y) noexcept {
-    return Quaternion<std::common_type_t<T, U>>{x.v() * y.s() + y.v() * x.s() + cross(x.v(), y.v()),
-                                                x.s() * y.s() - dot(x.v(), y.v())};
+template <typename T>
+constexpr auto operator*(const Quaternion<T>& x, const Quaternion<T>& y) noexcept {
+    return Quaternion<T>{x.v() * y.s() + y.v() * x.s() + cross(x.v(), y.v()),
+                         x.s() * y.s() - dot(x.v(), y.v())};
 }
 
-template<typename T, typename U>
-inline auto rotate(const Vector<T, 3>& v, const Quaternion<U>& q) noexcept {
+template <typename T>
+inline auto rotate(const Vector<T, 3>& v, const Quaternion<T>& q) noexcept {
     const auto t = times2(cross(q.v(), v));
     return v + q.s() * t + cross(q.v(), t);
 }
 
-} // namespace mathlib
+}  // namespace mathlib

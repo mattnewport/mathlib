@@ -200,7 +200,6 @@ public:
         const auto m0 = Mat4FromQuat(q0);
         const auto xmq0 = XMQuaternionRotationAxis(toXmVector(axis), angle);
         const auto xmm0 = XMMatrixRotationQuaternion(xmq0);
-        XMMATRIX xmm;
         const auto m1 = toMat4f(xmm0);
         Assert::IsTrue(areNearlyEqual(m0, m1, 1e-6f));
     }
