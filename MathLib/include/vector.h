@@ -256,6 +256,7 @@ public:
 
     // Common swizzles
     constexpr auto xy() const noexcept { return this->swizzled<X, Y>(); }
+    constexpr auto yx() const noexcept { return this->swizzled<Y, X>(); }
     constexpr auto xz() const noexcept { return this->swizzled<X, Z>(); }
     constexpr auto xyz() const noexcept { return this->swizzled<X, Y, Z>(); }
     constexpr auto yzx() const noexcept { return this->swizzled<Y, Z, X>(); }
@@ -367,11 +368,6 @@ struct ScalarType<Vector<T, N>> {
 // Free function tuple style get<>()
 template <std::size_t I, typename T, std::size_t N>
 constexpr auto get(const mathlib::Vector<T, N>& x) noexcept -> const T& {
-    return x[I];
-}
-
-template <std::size_t I, typename T, std::size_t N>
-constexpr auto get(mathlib::Vector<T, N>& x) noexcept -> T& {
     return x[I];
 }
 
