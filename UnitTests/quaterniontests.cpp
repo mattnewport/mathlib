@@ -10,6 +10,9 @@
 #include "quaternion.h"
 #include "quaternionio.h"
 
+#include "vectorasserthelpers.h"
+#include "quaternionasserthelpers.h"
+
 #if defined(__clang__)
 #elif defined(_MSC_VER)
 #include <DirectXMath.h>
@@ -20,21 +23,6 @@ using namespace DirectX;
 using namespace mathlib;
 
 using namespace std::literals;
-
-namespace Microsoft {
-namespace VisualStudio {
-namespace CppUnitTestFramework {
-template <typename T, size_t N>
-auto ToString(const Vector<T, N>& x) {
-    RETURN_WIDE_STRING(x);
-}
-template <typename T>
-auto ToString(const Quaternion<T>& x) {
-    RETURN_WIDE_STRING(x);
-}
-}  // namespace CppUnitTestFramework
-}  // namespace VisualStudio
-}  // namespace Microsoft
 
 namespace UnitTests {
 

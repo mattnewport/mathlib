@@ -24,6 +24,15 @@
     <ClInclude Include="unittestwrapper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="vectorasserthelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="quaternionasserthelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="matrixasserthelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

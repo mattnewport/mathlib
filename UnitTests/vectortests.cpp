@@ -11,6 +11,8 @@
 #include "vector.h"
 #include "vectorio.h"
 
+#include "vectorasserthelpers.h"
+
 #if defined(__clang__)
 #elif defined(_MSC_VER)
 #include <DirectXMath.h>
@@ -21,17 +23,6 @@ using namespace DirectX;
 using namespace mathlib;
 
 using namespace std::literals;
-
-namespace Microsoft {
-namespace VisualStudio {
-namespace CppUnitTestFramework {
-template <typename T, size_t N>
-auto ToString(const Vector<T, N>& x) {
-    RETURN_WIDE_STRING(x);
-}
-}  // namespace CppUnitTestFramework
-}  // namespace VisualStudio
-}  // namespace Microsoft
 
 namespace UnitTests {
 
@@ -50,11 +41,11 @@ inline auto areNearlyEqual(const Vec3f& v, const XMVECTOR& xmv, float eps) {
 }
 #endif
 
-template<typename T> struct Debug;
+template <typename T>
+struct Debug;
 
 TEST_CLASS(VectorUnitTests) {
 public:
-
     TEST_METHOD(TestTypeTraits) {
         static_assert(IsVector_v<Vec4f>);
         static_assert(IsVector_v<decltype(Vec4f{})>);
@@ -65,103 +56,106 @@ public:
         static_assert(!AllOfType_v<Vec3f, Vec4f, Vector<float, 3>>);
     }
 
-TEST_METHOD(TestVectorConstructors){
-    using namespace std;
-    // Vec4f cannot be constructed from a single float
-    static_assert(!is_constructible_v<Vec4f, float>);
-    // Vec4f cannot be constructed from a char*
-    static_assert(!is_constructible_v<Vec4f, char*>);
-    // Vec4f cannot be constructed from a double
-    static_assert(!is_constructible_v<Vec4f, double>);
-    // Vec4f can be constructed from 4 floats
-    static_assert(is_constructible_v<Vec4f, float, float, float, float>);
-    // Vec4f cannot be constructed from 4 doubles
-    static_assert(!is_constructible_v<Vec4f, double, double, double, double>);
-    // Vec4f can be constructed from Vec4i
-    static_assert(is_constructible_v<Vec4f, Vec4i>);
-    // Vec4f cannot be constructed from Vec3i
-    static_assert(!is_constructible_v<Vec4f, Vec3i>);
-    // Vec4f can be constructed from Vec3f and float
-    static_assert(is_constructible_v<Vec4f, Vec3f, float>);
-    // Vec4f cannot be constructed from Vec3i and int
-    static_assert(!is_constructible_v<Vec4f, Vec3i, int>);
+    TEST_METHOD(TestVectorConstructors) {
+        using namespace std;
+        // Vec4f cannot be constructed from a single float
+        static_assert(!is_constructible_v<Vec4f, float>);
+        // Vec4f cannot be constructed from a char*
+        static_assert(!is_constructible_v<Vec4f, char*>);
+        // Vec4f cannot be constructed from a double
+        static_assert(!is_constructible_v<Vec4f, double>);
+        // Vec4f can be constructed from 4 floats
+        static_assert(is_constructible_v<Vec4f, float, float, float, float>);
+        // Vec4f cannot be constructed from 4 doubles
+        static_assert(!is_constructible_v<Vec4f, double, double, double, double>);
+        // Vec4f can be constructed from Vec4i
+        static_assert(is_constructible_v<Vec4f, Vec4i>);
+        // Vec4f cannot be constructed from Vec3i
+        static_assert(!is_constructible_v<Vec4f, Vec3i>);
+        // Vec4f can be constructed from Vec3f and float
+        static_assert(is_constructible_v<Vec4f, Vec3f, float>);
+        // Vec4f cannot be constructed from Vec3i and int
+        static_assert(!is_constructible_v<Vec4f, Vec3i, int>);
 
-    // Construct from N Ts
-    constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
-    static_assert(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
-    Assert::IsTrue(v1.x() == 1.0f && v1.y() == 2.0f && v1.z() == 3.0f && v1.w() == 4.0f);
-    Assert::IsTrue(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
+        // Construct from N Ts
+        constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
+        static_assert(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
+        Assert::IsTrue(v1.x() == 1.0f && v1.y() == 2.0f && v1.z() == 3.0f && v1.w() == 4.0f);
+        Assert::IsTrue(v1[0] == 1.0f && v1[1] == 2.0f && v1[2] == 3.0f && v1[3] == 4.0f);
 
-    // Construct Vector<T, N> from Vector<T, N-1> and a T
-    constexpr Vector<float, 1> v2{ 1.0f };
-    static_assert(v1[0] == 1.0f);
-    constexpr Vec2f v3{ v2, 2.0f };
-    static_assert(v3[0] == 1.0f && v3[1] == 2.0f);
-    constexpr Vec3f v4{ v3, 3.0f };
-    static_assert(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
-    Assert::IsTrue(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
+        // Construct Vector<T, N> from Vector<T, N-1> and a T
+        constexpr Vector<float, 1> v2{1.0f};
+        static_assert(v1[0] == 1.0f);
+        constexpr Vec2f v3{v2, 2.0f};
+        static_assert(v3[0] == 1.0f && v3[1] == 2.0f);
+        constexpr Vec3f v4{v3, 3.0f};
+        static_assert(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
+        Assert::IsTrue(v4[0] == 1.0f && v4[1] == 2.0f && v4[2] == 3.0f);
 
-    // Construct Vector<T, N> from Vector<T, M> where M > N (take first N elements)
-    constexpr Vec4f v5{ 1.0f, 2.0f, 3.0f, 4.0f };
-    constexpr Vec3f v6{ v5 };
-    static_assert(v6[0] == 1.0f && v6[1] == 2.0f && v6[2] == 3.0f);
+        // Construct Vector<T, N> from Vector<T, M> where M > N (take first N elements)
+        constexpr Vec4f v5{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr Vec3f v6{v5};
+        static_assert(v6[0] == 1.0f && v6[1] == 2.0f && v6[2] == 3.0f);
 
-    // Construct Vector<U, N> from Vector<T, N>
-    constexpr Vector<double, 4> vd1{ v5 };
-    static_assert(vd1[0] == 1.0 && vd1[1] == 2.0 && vd1[2] == 3.0 && vd1[3] == 4.0);
+        // Construct Vector<U, N> from Vector<T, N>
+        constexpr Vector<double, 4> vd1{v5};
+        static_assert(vd1[0] == 1.0 && vd1[1] == 2.0 && vd1[2] == 3.0 && vd1[3] == 4.0);
 
-    // Construct Vector<T, N> from array of N Ts
-    constexpr float fs[]{ 5.0f, 6.0f, 7.0f, 8.0f };
-    constexpr Vec4f v7{ fs };
-    static_assert(v7[0] == 5.0f && v7[1] == 6.0f && v7[2] == 7.0f && v7[3] == 8.0f);
+        // Construct Vector<T, N> from array of N Ts
+        constexpr float fs[]{5.0f, 6.0f, 7.0f, 8.0f};
+        constexpr Vec4f v7{fs};
+        static_assert(v7[0] == 5.0f && v7[1] == 6.0f && v7[2] == 7.0f && v7[3] == 8.0f);
 
-    // Construct a Vector of Vectors
-    constexpr Vector<Vec2f, 2> v8{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
-    static_assert(std::is_same_v<ScalarType_t<Vec2f>, float>);
-    static_assert(std::is_same_v<ScalarType_t<decltype(v8)>, float>);
-}
+        // Construct a Vector of Vectors
+        constexpr Vector<Vec2f, 2> v8{Vec2f{1.0f, 2.0f}, Vec2f{3.0f, 4.0f}};
+        static_assert(std::is_same_v<ScalarType_t<Vec2f>, float>);
+        static_assert(std::is_same_v<ScalarType_t<decltype(v8)>, float>);
+    }
 
-TEST_METHOD(TestVectorValueInitialization) {
-    using namespace std;
-    union {
-        Vec4f v;
-        char data[sizeof(Vec4f)];
-    } x;
-    memset(x.data, 0xbd, sizeof(x.data));
-    new (x.data) Vec4f{};
-    Assert::IsTrue(x.v[0] == 0.0f && x.v[1] == 0.0f && x.v[2] == 0.0f && x.v[3] == 0.0f);
-}
+    TEST_METHOD(TestVectorValueInitialization) {
+        using namespace std;
+        union {
+            Vec4f v;
+            char data[sizeof(Vec4f)];
+        } x;
+        memset(x.data, 0xbd, sizeof(x.data));
+        new (x.data) Vec4f{};
+        Assert::IsTrue(x.v[0] == 0.0f && x.v[1] == 0.0f && x.v[2] == 0.0f && x.v[3] == 0.0f);
+    }
 
-TEST_METHOD(TestVectorZeroAndOnes) {
-    constexpr auto v0 = Vec3f::zero();
-    static_assert(v0[0] == 0.0f && v0[1] == 0.0f && v0[2] == 0.0f);
-    constexpr auto v1 = Vec3f::ones();
-    static_assert(v1[0] == 1.0f && v1[0] == 1.0f && v1[1] == 1.0f);
-    constexpr auto v2 = Vector<Vec2f, 2>::ones();
-    static_assert(v2 == Vector<Vec2f, 2>{Vec2f{1.0f, 1.0f}, Vec2f{1.0f, 1.0f}});
-}
+    TEST_METHOD(TestVectorZeroAndOnes) {
+        constexpr auto v0 = Vec3f::zero();
+        static_assert(v0[0] == 0.0f && v0[1] == 0.0f && v0[2] == 0.0f);
+        constexpr auto v1 = Vec3f::ones();
+        static_assert(v1[0] == 1.0f && v1[0] == 1.0f && v1[1] == 1.0f);
+        constexpr auto v2 = Vector<Vec2f, 2>::ones();
+        static_assert(v2 == Vector<Vec2f, 2>{Vec2f{1.0f, 1.0f}, Vec2f{1.0f, 1.0f}});
+    }
 
-TEST_METHOD(TestVectorEquality) {
-    constexpr Vec4f v0{ 1.0f, 1.0f, 1.0f, 1.0f };
-    constexpr Vec4f v1{ 1.0f, 2.0f, 3.0f, 4.0f };
-    constexpr auto v2 = v1;
-    static_assert(v2 == v1);
-    Assert::IsTrue(v2 == v1);
-    static_assert(v0 != v1);
-    Assert::IsTrue(v0 != v1);
-    static_assert(!(v2 != v1));
-    Assert::IsFalse(v2 != v1);
-    static_assert(!(v0 == v1));
-    Assert::IsFalse(v0 == v1);
-    constexpr Vec3f v7{ v1 };
-    static_assert(v7 == Vec3f{ 1.0f, 2.0f, 3.0f });
+    TEST_METHOD(TestVectorEquality) {
+        constexpr Vec4f v0{1.0f, 1.0f, 1.0f, 1.0f};
+        constexpr Vec4f v1{1.0f, 2.0f, 3.0f, 4.0f};
+        constexpr auto v2 = v1;
+        static_assert(v2 == v1);
+        Assert::IsTrue(v2 == v1);
+        static_assert(v0 != v1);
+        Assert::IsTrue(v0 != v1);
+        static_assert(!(v2 != v1));
+        Assert::IsFalse(v2 != v1);
+        static_assert(!(v0 == v1));
+        Assert::IsFalse(v0 == v1);
+        constexpr Vec3f v7{v1};
+        static_assert(v7 == Vec3f{1.0f, 2.0f, 3.0f});
 
-    constexpr Vector<double, 4> v3{ 1.0, 2.0, 3.0, 4.0 };
-    const Vector<double, 4> v4{ v1 };
-    Assert::IsTrue(v4 == v3);
-    const Vector<double, 4> v5{ 1.0, 1.0, 1.0, 1.0 };
-    Assert::IsTrue(v5 == Vector<double, 4>{v0});
-}
+        constexpr Vector<double, 4> v3{1.0, 2.0, 3.0, 4.0};
+        const Vector<double, 4> v4{v1};
+        Assert::IsTrue(v4 == v3);
+        const auto s = Microsoft::VisualStudio::CppUnitTestFramework::ToString(v3);
+        const auto s1 = ToString(v4);
+        Assert::AreEqual(v3, v4);
+        const Vector<double, 4> v5{1.0, 1.0, 1.0, 1.0};
+        Assert::IsTrue(v5 == Vector<double, 4>{v0});
+    }
 
 TEST_METHOD(TestVectorMemberAccess) {
     constexpr Vec3f v0{ 1.0f, 2.0f, 3.0f };
@@ -396,6 +390,7 @@ TEST_METHOD(TestVectorCross) {
     Assert::IsTrue(memcmp(&xv2, &v2, sizeof(v2)) == 0);
 #endif
 }
+
 };
 
-}
+}  // namespace UnitTests

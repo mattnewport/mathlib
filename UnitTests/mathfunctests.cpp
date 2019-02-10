@@ -11,19 +11,11 @@
 #include "vector.h"
 #include "vectorio.h"
 
+#include "vectorasserthelpers.h"
+
 using namespace mathlib;
 
 using namespace std::literals;
-
-namespace Microsoft {
-    namespace VisualStudio {
-        namespace CppUnitTestFramework {
-            template <typename T, size_t N>
-            auto ToString(const mathlib::Vector<T, N>& x) { RETURN_WIDE_STRING(x); }
-        }
-    }
-}
-
 
 namespace UnitTests {
 
@@ -43,7 +35,9 @@ public:
 
     TEST_METHOD(TestAbs) {
         constexpr auto v0 = Vec3f{ -0.5f, 2.0f, 1.1f };
-        const auto v2 = abs(v0);
+        const Vec3f v2 = abs(v0);
+        auto s = ToString(v2);
+        const auto same = v2 == Vec3f{0.5f, 2.0f, 1.1f};
         Assert::AreEqual(v2, Vec3f{ 0.5f, 2.0f, 1.1f });
     }
 
