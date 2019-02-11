@@ -391,6 +391,13 @@ TEST_METHOD(TestVectorCross) {
 #endif
 }
 
+TEST_METHOD(TestVectorLerp) { 
+    constexpr auto v0 = Vec3f::zero();
+    constexpr auto v1 = Vec3f::ones();
+    constexpr auto v2 = lerp(v0, v1, 0.6f);
+    Assert::AreEqual(v2, Vec3f{0.6f, 0.6f, 0.6f});
+}
+
 };
 
 }  // namespace UnitTests

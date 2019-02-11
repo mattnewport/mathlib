@@ -19,8 +19,8 @@ constexpr auto times2(T x) {
     return x + x;
 }
 
-template <typename T>
-constexpr auto lerp(T a, T b, T t) {
+template <typename T, typename U>
+constexpr auto lerp(T a, T b, U t) {
     return a + (b - a) * t;
 }
 
